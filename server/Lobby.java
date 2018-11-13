@@ -82,6 +82,10 @@ public class Lobby {
         client.id = -1;
         client.send("ok");
       }
+      else
+      if (cmd == "finish") {
+        break;
+      }
     }
   }
 }
