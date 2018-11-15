@@ -1,4 +1,4 @@
-package server.game;
+package server.game.map;
 
 import java.util.*;
 
@@ -10,17 +10,17 @@ import java.util.*;
 public interface Visibility {
   /** Returns the list of all positions visible from <pos>. If <pos> is
    * out of bounds of the map, returns null. */
-  List<Position> visibleFrom (Position pos) ;
+  Set<Position> visibleFrom (Position pos) ;
   
-  default List<Position> visibleFrom (int pos_r, int pos_c) {
+  default Set<Position> visibleFrom (int pos_r, int pos_c) {
     return visibleFrom(new Position(pos_r, pos_c));
   }
   
   /** Returns the list of all positions that can see <pos>. If <pos> is
    * out of bounds of the map, returns null. */
-  List<Position> canSee (Position pos) ;
+  Set<Position> canSee (Position pos) ;
   
-  default List<Position> canSee (int pos_r, int pos_c) {
+  default Set<Position> canSee (int pos_r, int pos_c) {
     return canSee(new Position(pos_r, pos_c));
   }
 }
@@ -31,7 +31,7 @@ public interface Visibility {
  * unobscured only when we are adjacent to them and they are not too high.
  * We see adjacent cells that are 1 elevation higher than we are. */
 class SimpleVisibility implements Visibility {
-  protected Map<Position, List<Position> > from, to;
+  protected Map<Position, Set<Position> > from, to;
   
   /** Constructs a visibility graph for the given Terrain and range. */
   public SimpleVisibility (Terrain map, int range) {
@@ -42,8 +42,8 @@ class SimpleVisibility implements Visibility {
     for (int i = 0; i < map.r; i++) {
       for (int j = 0; j < map.c; j++) {
         Position pos = new Position(i, j);
-        from.put(pos, new ArrayList<Position>());
-        to.put(pos, new ArrayList<Position>());
+        from.put(pos, new HashSet<Position>());
+        to.put(pos, new HashSet<Position>());
       }
     }
     
@@ -81,12 +81,12 @@ class SimpleVisibility implements Visibility {
   }
   
   @Override
-  public List<Position> visibleFrom (Position pos) {
+  public Set<Position> visibleFrom (Position pos) {
     return from.get(pos);
   }
   
   @Override
-  public List<Position> canSee (Position pos) {
+  public Set<Position> canSee (Position pos) {
     return to.get(pos);
   }
 }

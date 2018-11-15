@@ -1,4 +1,4 @@
-package server.game;
+package server.game.map;
 
 import java.util.*;
 
@@ -8,7 +8,7 @@ import java.util.*;
  * the real world. This, however, leads to quite hard to understand
  * code and mechanics. */
 public class LinearVisibility implements Visibility {
-  protected Map<Position, List<Position> > from, to;
+  protected Map<Position, Set<Position> > from, to;
   
   /** Constructs a linear visibility graph for the given Terrain and range. */
   public LinearVisibility (Terrain map, int range) {
@@ -19,8 +19,8 @@ public class LinearVisibility implements Visibility {
     for (int i = 0; i < map.r; i++) {
       for (int j = 0; j < map.c; j++) {
         Position pos = new Position(i, j);
-        from.put(pos, new ArrayList<Position>());
-        to.put(pos, new ArrayList<Position>());
+        from.put(pos, new HashSet<Position>());
+        to.put(pos, new HashSet<Position>());
       }
     }
     
@@ -48,12 +48,12 @@ public class LinearVisibility implements Visibility {
   }
   
   @Override
-  public List<Position> visibleFrom (Position pos) {
+  public Set<Position> visibleFrom (Position pos) {
     return from.get(pos);
   }
   
   @Override
-  public List<Position> canSee (Position pos) {
+  public Set<Position> canSee (Position pos) {
     return to.get(pos);
   }
   

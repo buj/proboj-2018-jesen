@@ -1,4 +1,4 @@
-package server.game;
+package server.game.map;
 
 import java.util.*;
 
@@ -14,9 +14,8 @@ public class Terrain {
   protected Type[][] terrain;
   protected int[][] elevation;
   
-  /** Constructs the Terrain from a string description. */
-  public Terrain (String str) {
-    Scanner sc = new Scanner(str);
+  /** Constructs the Terrain by reading from the provided Scanner. */
+  public Terrain (Scanner sc) {
     r = sc.nextInt();
     c = sc.nextInt();
     
@@ -36,9 +35,15 @@ public class Terrain {
       }
     }
   }
+  public Terrain (String str) {
+    this(new Scanner(str));
+  }
   
   public boolean outOfBounds (int ra, int ca) {
     return (ra < 0 || ra >= r || ca < 0 || ca >= c);
+  }
+  public boolean outOfBounds (Position pos) {
+    return outOfBounds(pos.r, pos.c);
   }
   
   /** Returns the Terrain.Type at location [pos_r, pos_c]. If that is out

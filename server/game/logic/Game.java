@@ -1,0 +1,365 @@
+package server.game.logic;
+
+import java.util.*;
+import server.game.map.*;
+import server.game.units.*;
+import server.game.Constants;
+
+
+/** Simulates game logic: moves, attacks, deaths, ... taking into account
+ * information about visibility and terrain. */
+public class Game {
+  protected Random rng;
+  protected Terrain terrain;
+  protected Visibility visibility;
+  protected Map<Position, Unit> unitMap;
+  protected int score; // number of attackers that have successfully passed through
+  
+  /** Constructs a Game from the given terrain and list of initialUnits. */
+  public Game (long seed, Terrain terrain0, List<InitialUnit> initial) {
+    rng = new Random(seed);
+    terrain = terrain0;
+    visibility = new LinearVisibility(terrain, 2);
+    unitMap = new HashMap<Position, Unit>();
+    score = 0;
+    
+    // populate the unit list from <initial>
+    for (InitialUnit data : initial) {
+      Unit unit = new Unit(data.owner, data.type);
+      unitMap.put(data.pos, unit);
+    }
+  }
+  
+  /** How much damage should be dealt? We have strength <a> and opponent
+   * has strength <b>. */
+  static int blow (double a, double b) {
+    double dmg = 50.0 * a / (a+b);
+    return (int)dmg;
+  }
+  
+  /** An auxiliary structure. Used to execute each player's commands
+   * in multiple steps. */
+  class Stepper {
+    // track units that have already received a command
+    Set<Position> exhausted;
+    
+    // structures for attacks and shots
+    Map<Position, List<Position> > atkMap;
+    Map<Position, List<UnitEvent> > combatResults;
+    
+    // structures for movement
+    Map<Position, List<Position> > moveMap;
+    Map<Position, Position> moveChains;
+    
+    Stepper () {
+      exhausted = new HashSet<Position>();
+      atkMap = new HashMap<Position, List<Position> >();
+      combatResults = new HashMap<Position, List<UnitEvent> >();
+      moveMap = new HashMap<Position, List<Position> >();
+      moveChains = new HashMap<Position, Position>();
+    }
+    
+    
+    /** Creates a UnitEvent that says the following: "Unit at position
+     * <pos> will have its health changed by <mod>." Does not check
+     * bounds. */
+    void healthChange (Position pos, int mod) {
+      combatResults.putIfAbsent(pos, new ArrayList<UnitEvent>());
+      combatResults.get(pos).add(UnitEvent.health(mod));
+    }
+    /** Creates a UnitEvent that says the following: "Unit at position
+     * <pos> will have its stamina changed by <mod>." Does not check
+     * bounds. */
+    void staminaChange (Position pos, int mod) {
+      combatResults.putIfAbsent(pos, new ArrayList<UnitEvent>());
+      combatResults.get(pos).add(UnitEvent.stamina(mod));
+    }
+    
+    /** Returns the stamina cost of moving from position <pos> to position <tgt>. */
+    int staminaCost (Position pos, Position tgt) {
+      int h0 = terrain.heightAt(pos);
+      int h1 = terrain.heightAt(tgt);
+      Terrain.Type tt = terrain.terrainAt(tgt);
+      if (h0 < h1 || tt == Terrain.Type.FOREST) {
+        return 50;
+      }
+      return 10;
+    }
+    
+    /** Check if the movement is valid: if the two positions are adjacent
+     * to one another and if terrain permits such a move.*/
+    boolean canMove (Position pos, Position tgt) {
+      // are the two positions adjacent?
+      if (pos.distTo(tgt) != 1) {
+        return false;
+      }
+      // is the height difference not too large?
+      int h0 = terrain.heightAt(pos);
+      int h1 = terrain.heightAt(tgt);
+      if (Math.abs(h0 - h1) > 1) {
+        return false;
+      }
+      // is the terrain not water?
+      Terrain.Type tt = terrain.terrainAt(tgt);
+      if (tt == Terrain.Type.WATER) {
+        return false;
+      }
+      // finish
+      return true;
+    }
+    
+    
+    /** Unit at position <pos> wants to move to position <tgt>. Checks
+     * if the movement is valid, and only then it is added to the list
+     * of pending commands. */
+    void move (Position pos, Position tgt) {
+      // terrain/position related check
+      if (!canMove(pos, tgt)) {
+        return;
+      }
+      // enough stamina?
+      Unit unit = unitMap.get(pos);
+      if (unit.getStamina() < staminaCost(pos, tgt)) {
+        return;
+      }
+      // finish
+      moveMap.putIfAbsent(tgt, new ArrayList<Position>());
+      moveMap.get(tgt).add(pos);
+    }
+    
+    /** Unit at position <pos> wants to attack position <tgt>. 
+     * Check if the attack is valid: if the enemy is in range, if
+     * the unit is not trying to selfdestruct or harm its ally,
+     * and if it has enough stamina. */
+    void attack (Position pos, Position tgt) {
+      // are both cells occupied?
+      if (!unitMap.containsKey(tgt)) {
+        return;
+      }
+      // checks based on unit type
+      Unit attacker = unitMap.get(pos);
+      if (attacker.type == Unit.Type.WARRIOR) {
+        if (!canMove(pos, tgt) || attacker.getStamina() < staminaCost(pos, tgt)) {
+          return;
+        }
+      }
+      if (attacker.type == Unit.Type.ARCHER) { // range 2, and must see the target
+        if (!visibility.visibleFrom(pos).contains(tgt)) {
+          return;
+        }
+        int dist = pos.distTo(tgt);
+        if (dist > 2) {
+          return;
+        }
+      }
+      // is it really an enemy?
+      Unit defender = unitMap.get(tgt);
+      if (attacker.owner == defender.owner) {
+        return;
+      }
+      // finish
+      atkMap.putIfAbsent(tgt, new ArrayList<Position>());
+      atkMap.get(tgt).add(pos);
+      if (attacker.type == Unit.Type.WARRIOR) {
+        // loses stamina
+        int cost = staminaCost(pos, tgt);
+        staminaChange(pos, -cost);
+        // tries to move there
+        moveMap.putIfAbsent(tgt, new ArrayList<Position>());
+        moveMap.get(tgt).add(pos);
+      }
+    }
+    
+    /** Player <player> has given the command <cmd>. We check the
+     * command for correctness, and only then do we execute it. */
+    void command (int player, Command cmd) {
+      // is the target cell within the map?
+      if (terrain.outOfBounds(cmd.tgt)) {
+        return;
+      }
+      // does the source cell contain this player's unit?
+      Unit unit = unitMap.get(cmd.pos);
+      if (unit == null || unit.owner != player) {
+        return;
+      }
+      // did it already receive a command?
+      if (exhausted.contains(cmd.pos)) {
+        return;
+      }
+      exhausted.add(cmd.pos);
+      // finish
+      if (cmd.type == Command.Type.ATTACK) {
+        attack(cmd.pos, cmd.tgt);
+      }
+      else
+      if (cmd.type == Command.Type.MOVE) {
+        move(cmd.pos, cmd.tgt);
+      }
+    }
+    
+    
+    /** Executes all queued attacks. */
+    void executeAttacks () {
+      for (Position tgt : atkMap.keySet()) { // for each cell that is attacked
+        List<Position> attackers = atkMap.get(tgt);
+        Unit defender = unitMap.get(tgt);
+        double baseDef = defender.getDefense() / attackers.size();
+        
+        // have defender fight with each attacker
+        for (Position pos : attackers) {
+          Unit attacker = unitMap.get(pos);
+          double atk = attacker.getAttack();
+          double def = baseDef;
+          // apply combat modifiers from terrain
+          if (terrain.heightAt(tgt) > terrain.heightAt(pos)) {
+            def *= 1.5;
+          }
+          if (terrain.terrainAt(tgt) == Terrain.Type.FOREST) {
+            def *= 1.5;
+          }
+          if (attacker.type == Unit.Type.WARRIOR) {
+            // fight! close combat!
+            int atkDmgDealt = blow(atk, def);
+            int defDmgDealt = blow(def, atk);
+            healthChange(tgt, -atkDmgDealt);
+            healthChange(pos, -defDmgDealt);
+          }
+          else
+          if (attacker.type == Unit.Type.ARCHER) {
+            // ranged volley of arrows
+            int atkDmgDealt = blow(atk, def);
+            healthChange(tgt, -atkDmgDealt);
+          }
+        }
+      }
+    }
+    
+    /** Applies all unit events. */
+    void applyEvents () {
+      for (Position pos : combatResults.keySet()) { // for each recipient...
+        List<UnitEvent> events = combatResults.get(pos);
+        Unit unit = unitMap.get(pos);
+        for (UnitEvent ev : events) { // for each of his events... apply it
+          ev.apply(unit);
+        }
+      }
+    }
+    
+    /** Constructs 'moveChains' from 'moveMap': where multiple units
+     * wanted to move, we choose randomly one of them that receives
+     * priority. (But we ignore dead units.) */
+    void solveCollisions () {
+      for (Position tgt : moveMap.keySet()) {
+        List<Position> movers = moveMap.get(tgt);
+        
+        // clear dead movers
+        List<Position> nonDeadMovers = new ArrayList<Position>();
+        for (Position pos : movers) {
+          Unit unit = unitMap.get(pos);
+          if (!unit.isDead()) {
+            nonDeadMovers.add(pos);
+          }
+        }
+        // randomly choose the winner
+        int n = nonDeadMovers.size();
+        if (n == 0) {
+          continue;
+        }
+        int who = rng.nextInt(n);
+        Position pos = nonDeadMovers.get(who);
+        moveChains.put(pos, tgt);
+      }
+    }
+    
+    /** Finally moves all units in 'unitMap' to their destination. */
+    void finish () {
+      // clear zombies
+      Iterator<Position> it = unitMap.keySet().iterator();
+      while (it.hasNext()) {
+        Position pos = it.next();
+        Unit unit = unitMap.get(pos);
+        if (unit.isDead()) {
+          it.remove();
+        }
+      }
+      // move along the chains
+      ArrayList<Position> temp = new ArrayList<Position>(moveChains.keySet());
+      for (Position pos : temp) {
+        if (!moveChains.containsKey(pos)) {
+          continue;
+        }
+        // find the chain
+        List<Position> chain = new ArrayList<Position>();
+        Position curr = pos;
+        while (moveChains.containsKey(curr)) {
+          chain.add(curr);
+          curr = moveChains.get(curr);
+          if (curr.equals(pos)) { // cycle
+            break;
+          }
+        }
+        if (!unitMap.containsKey(curr) && !curr.equals(pos)) { // will not move a cycle
+          chain.add(curr);
+          // move units along the chain
+          int n = chain.size();
+          for (int i = n - 2; i >= 0; i--) {
+            Position from = chain.get(i);
+            Position to = chain.get(i+1);
+            Unit who = unitMap.get(from);
+            unitMap.remove(from);
+            unitMap.put(to, who);
+          }
+        }
+        // clear this part of moveChains
+        for (Position pos2 : chain) {
+          moveChains.remove(pos2);
+        }
+      }
+    }
+    
+    /** Updates the game state based on the accumulated commands. */
+    void update () {
+      executeAttacks();
+      applyEvents();
+      solveCollisions();
+      finish();
+    }
+  }
+  
+  /** Returns a String describing the state and locations of units visible
+   * to player <i>. If <i> equals -1, returns all units (observer sees it all). */
+  public String getData (int player) {
+    StringBuilder bui = new StringBuilder();
+    
+    // find all visible units
+    Set<PosUnit> visible = new HashSet<PosUnit>();
+    for (Map.Entry<Position, Unit> entry : unitMap.entrySet()) {
+      Position pos = entry.getKey();
+      Unit unit = entry.getValue();
+      if (player != -1 && unit.owner != player) {
+        continue;
+      }
+      visible.add(new PosUnit(pos, unit));
+      
+      // add all units that this unit can see
+      if (player != -1) {
+        for (Position pos2 : visibility.visibleFrom(pos)) {
+          if (!unitMap.containsKey(pos2)) {
+            continue;
+          }
+          Unit unit2 = unitMap.get(pos2);
+          visible.add(new PosUnit(pos2, unit2));
+        }
+      }
+    }
+    
+    // put it all into stringbuilder
+    bui.append(visible.size());
+    bui.append("\n");
+    for (PosUnit pu : visible) {
+      bui.append(pu.toString());
+      bui.append("\n");
+    }
+    return bui.toString();
+  }
+}
