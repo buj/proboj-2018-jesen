@@ -10,10 +10,15 @@ import server.game.Constants;
  * information about visibility and terrain. */
 public class Game {
   protected Random rng;
+  
   protected Terrain terrain;
   protected Visibility visibility;
+  
   protected Map<Position, Unit> unitMap;
   protected int score; // number of attackers that have successfully passed through
+  protected int turn; // turn number
+  protected Stepper stepper; // contains almost all of game logic
+  protected boolean gameOver;
   
   /** Constructs a Game from the given terrain and list of initialUnits. */
   public Game (long seed, Terrain terrain0, List<InitialUnit> initial) {
@@ -22,6 +27,9 @@ public class Game {
     visibility = new LinearVisibility(terrain, 2);
     unitMap = new HashMap<Position, Unit>();
     score = 0;
+    turn = 1;
+    stepper = new Stepper();
+    gameOver = false;
     
     // populate the unit list from <initial>
     for (InitialUnit data : initial) {
@@ -33,12 +41,13 @@ public class Game {
   /** How much damage should be dealt? We have strength <a> and opponent
    * has strength <b>. */
   static int blow (double a, double b) {
-    double dmg = 50.0 * a / (a+b);
+    double dmg = (double)Constants.baseDamage * a / (a+b);
     return (int)dmg;
   }
   
-  /** An auxiliary structure. Used to execute each player's commands
-   * in multiple steps. */
+  /** An auxiliary structure. Waits for player commands and then
+   * executes them when requested. Should be used only once---for
+   * each time step, create a new Stepper and use that one. */
   class Stepper {
     // track units that have already received a command
     Set<Position> exhausted;
@@ -81,9 +90,9 @@ public class Game {
       int h1 = terrain.heightAt(tgt);
       Terrain.Type tt = terrain.terrainAt(tgt);
       if (h0 < h1 || tt == Terrain.Type.FOREST) {
-        return 50;
+        return Constants.roughTerrainCost;
       }
-      return 10;
+      return Constants.normalTerrainCost;
     }
     
     /** Check if the movement is valid: if the two positions are adjacent
@@ -245,6 +254,42 @@ public class Game {
       }
     }
     
+    /** Units that survived and were not given any orders will
+     * regenerate health and stamina. */
+    void regenerate () {
+      for (Position pos : unitMap.keySet()) {
+        // if unit is exhausted or dead, ignore it
+        if (exhausted.contains(pos)) {
+          continue;
+        }
+        Unit unit = unitMap.get(pos);
+        if (unit.isDead()) {
+          continue;
+        }
+        // find out if it is next to water
+        boolean nextToWater = false;
+        for (int dir = 0; dir < 4; dir++) {
+          Position adj = pos.adj(dir);
+          if (terrain.terrainAt(adj) == Terrain.Type.WATER) {
+            nextToWater = true;
+            break;
+          }
+        }
+        // regenerate health and stamina
+        int hpRegen, spRegen;
+        if (nextToWater) {
+          hpRegen = Constants.boostedHealthRegen;
+          spRegen = Constants.boostedStaminaRegen;
+        }
+        else {
+          hpRegen = Constants.healthRegen;
+          spRegen = Constants.staminaRegen;
+        }
+        unit.changeHealth(hpRegen);
+        unit.changeStamina(spRegen);
+      }
+    }
+    
     /** Constructs 'moveChains' from 'moveMap': where multiple units
      * wanted to move, we choose randomly one of them that receives
      * priority. (But we ignore dead units.) */
@@ -271,8 +316,9 @@ public class Game {
       }
     }
     
-    /** Finally moves all units in 'unitMap' to their destination. */
-    void finish () {
+    /** Finally moves all units in 'unitMap' to their destination. 
+     * This includes clearing out any zombie units. */
+    void moveIt () {
       // clear zombies
       Iterator<Position> it = unitMap.keySet().iterator();
       while (it.hasNext()) {
@@ -317,13 +363,94 @@ public class Game {
       }
     }
     
+    /** Clears attacking units that have reached the last row, and
+     * increases the attacker's score. */
+    void finishLine () {
+      Iterator<Position> it = unitMap.keySet().iterator();
+      while (it.hasNext()) {
+        Position pos = it.next();
+        Unit unit = unitMap.get(pos);
+        if (unit.owner != 1) {
+          continue;
+        }
+        if (terrain.inLastRow(pos)) {
+          it.remove();
+          score += 1;
+        }
+      }
+    }
+    
+    /** Checks if one side of the battle has been completely wiped out.
+     * If so, the rest can be simulated (assuming infinite time). */
+    void checkEnd () {
+      int[] counts = new int[]{0, 0};
+      for (Position pos : unitMap.keySet()) {
+        Unit unit = unitMap.get(pos);
+        counts[unit.owner] += 1;
+      }
+      if (counts[0] == 0) {
+        score += counts[1];
+        gameOver = true;
+      }
+      if (counts[1] == 0) {
+        gameOver = true;
+      }
+    }
+    
     /** Updates the game state based on the accumulated commands. */
     void update () {
       executeAttacks();
       applyEvents();
+      regenerate();
       solveCollisions();
-      finish();
+      moveIt();
+      finishLine();
+      checkEnd();
     }
+  }
+  
+  /** Parses the command from player <i>, and passes it to the stepper. */
+  public void command (int player, String str) {
+    if (player != 0 && player != 1) {
+      return;
+    }
+    Command cmd;
+    try {
+      cmd = Command.loadFrom(str);
+    }
+    catch (NoSuchElementException | IndexOutOfBoundsException exc) {
+      System.err.println(String.format("Error while parsing command '%s': %s", str, exc.getMessage()));
+      return;
+    }
+    stepper.command(player, cmd);
+  }
+  
+  /** Returns true if the game is over: either time has run out, or
+   * one side of the battle was completely wiped out (and the rest
+   * can be simulated). */
+  public boolean isGameOver () {
+    return gameOver;
+  }
+  
+  /** Advances the game by one time step. */
+  public void advance () {
+    if (gameOver) {
+      return;
+    }
+    stepper.update();
+    turn += 1;
+    if (turn > Constants.maxTurns) {
+      gameOver = true;
+      stepper = null;
+    }
+    else {
+      stepper = new Stepper();
+    }
+  }
+  
+  /** Returns the score accumulated by the attacker so far. */
+  public int getScore () {
+    return score;
   }
   
   /** Returns a String describing the state and locations of units visible
@@ -352,7 +479,6 @@ public class Game {
         }
       }
     }
-    
     // put it all into stringbuilder
     bui.append(visible.size());
     bui.append("\n");

@@ -46,6 +46,11 @@ public class Terrain {
     return outOfBounds(pos.r, pos.c);
   }
   
+  /** Is used to check scoring condition. */
+  public boolean inLastRow (Position pos) {
+    return pos.r == r-1;
+  }
+  
   /** Returns the Terrain.Type at location [pos_r, pos_c]. If that is out
    * of bounds of the map, returns Type.SENTINEL */
   public Type terrainAt (int pos_r, int pos_c) {
