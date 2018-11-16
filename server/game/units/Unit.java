@@ -7,7 +7,7 @@ package server.game.units;
 public class Unit {
   public enum Type {
     WARRIOR(100, 100, 8, 8),
-    ARCHER(100, 100, 7, 5);
+    ARCHER(100, 100, 7, 0);
     
     public final int maxHealth, maxStamina, baseAttack, baseDefense;
     
@@ -75,7 +75,7 @@ public class Unit {
   public double getAttack () {
     double hp = getHealthPercentage();
     double sp = getStaminaPercentage();
-    return (double)type.baseAttack * (1.0 + hp + sp) / 3.0;
+    return (double)type.baseAttack * hp * (1.0 + sp) / 2.0;
   }
   
   /** Returns the defensive strength of this unit, taking into account
@@ -83,7 +83,7 @@ public class Unit {
   public double getDefense () {
     double hp = getHealthPercentage();
     double sp = getStaminaPercentage();
-    return (double)type.baseDefense * (1.0 + hp + sp) / 3.0;
+    return (double)type.baseDefense * hp * (1.0 + sp) / 2.0;
   }
   
   @Override

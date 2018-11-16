@@ -23,6 +23,41 @@ public interface Visibility {
   default Set<Position> canSee (int pos_r, int pos_c) {
     return canSee(new Position(pos_r, pos_c));
   }
+  
+  /** Returns a string that describes the provided Visibility.
+   * Individual cells are described in order from top-left [0, 0]
+   * to bottom-right [r-1, c-1], columns are iterated faster. */
+  static String toString (int r, int c, Visibility vis) {
+    StringBuilder bui = new StringBuilder();
+    for (int i = 0; i < r; i++) { // first, visibleFrom
+      for (int j = 0; j < c; j++) {
+        boolean first = true;
+        for (Position pos : vis.visibleFrom(i, j)) {
+          if (!first) {
+            bui.append(" ");
+          }
+          first = false;
+          bui.append(pos.toString());
+        }
+        bui.append("\n");
+      }
+    }
+    bui.append("\n");
+    for (int i = 0; i < r; i++) { // now, canSee
+      for (int j = 0; j < c; j++) {
+        boolean first = true;
+        for (Position pos : vis.canSee(i, j)) {
+          if (!first) {
+            bui.append(" ");
+          }
+          first = false;
+          bui.append(pos.toString());
+        }
+        bui.append("\n");
+      }
+    }
+    return bui.toString();
+  }
 }
 
 

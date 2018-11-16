@@ -24,7 +24,7 @@ public class Game {
   public Game (long seed, Terrain terrain0, List<InitialUnit> initial) {
     rng = new Random(seed);
     terrain = terrain0;
-    visibility = new LinearVisibility(terrain, 2);
+    visibility = new LinearVisibility(terrain, 3);
     unitMap = new HashMap<Position, Unit>();
     score = 0;
     turn = 1;
@@ -102,15 +102,19 @@ public class Game {
       if (pos.distTo(tgt) != 1) {
         return false;
       }
+      // is the terrain not water?
+      Terrain.Type tt = terrain.terrainAt(tgt);
+      if (tt == Terrain.Type.WATER) {
+        return false;
+      }
+      // is it the finish line? if so, all is well
+      if (tt == Terrain.Type.FINISH_LINE) {
+        return true;
+      }
       // is the height difference not too large?
       int h0 = terrain.heightAt(pos);
       int h1 = terrain.heightAt(tgt);
       if (Math.abs(h0 - h1) > 1) {
-        return false;
-      }
-      // is the terrain not water?
-      Terrain.Type tt = terrain.terrainAt(tgt);
-      if (tt == Terrain.Type.WATER) {
         return false;
       }
       // finish
@@ -121,7 +125,7 @@ public class Game {
     /** Unit at position <pos> wants to move to position <tgt>. Checks
      * if the movement is valid, and only then it is added to the list
      * of pending commands. */
-    void move (Position pos, Position tgt) {
+    void moveCommand (Position pos, Position tgt) {
       // terrain/position related check
       if (!canMove(pos, tgt)) {
         return;
@@ -140,7 +144,7 @@ public class Game {
      * Check if the attack is valid: if the enemy is in range, if
      * the unit is not trying to selfdestruct or harm its ally,
      * and if it has enough stamina. */
-    void attack (Position pos, Position tgt) {
+    void attackCommand (Position pos, Position tgt) {
       // are both cells occupied?
       if (!unitMap.containsKey(tgt)) {
         return;
@@ -182,10 +186,6 @@ public class Game {
     /** Player <player> has given the command <cmd>. We check the
      * command for correctness, and only then do we execute it. */
     void command (int player, Command cmd) {
-      // is the target cell within the map?
-      if (terrain.outOfBounds(cmd.tgt)) {
-        return;
-      }
       // does the source cell contain this player's unit?
       Unit unit = unitMap.get(cmd.pos);
       if (unit == null || unit.owner != player) {
@@ -198,11 +198,11 @@ public class Game {
       exhausted.add(cmd.pos);
       // finish
       if (cmd.type == Command.Type.ATTACK) {
-        attack(cmd.pos, cmd.tgt);
+        attackCommand(cmd.pos, cmd.tgt);
       }
       else
       if (cmd.type == Command.Type.MOVE) {
-        move(cmd.pos, cmd.tgt);
+        moveCommand(cmd.pos, cmd.tgt);
       }
     }
     
@@ -370,10 +370,10 @@ public class Game {
       while (it.hasNext()) {
         Position pos = it.next();
         Unit unit = unitMap.get(pos);
-        if (unit.owner != 1) {
+        if (unit.owner != Constants.attacker) {
           continue;
         }
-        if (terrain.inLastRow(pos)) {
+        if (terrain.terrainAt(pos) == Terrain.Type.FINISH_LINE) {
           it.remove();
           score += 1;
         }
@@ -411,7 +411,7 @@ public class Game {
   
   /** Parses the command from player <i>, and passes it to the stepper. */
   public void command (int player, String str) {
-    if (player != 0 && player != 1) {
+    if (player != Constants.attacker && player != Constants.defender) {
       return;
     }
     Command cmd;
@@ -453,23 +453,25 @@ public class Game {
     return score;
   }
   
-  /** Returns a String describing the state and locations of units visible
-   * to player <i>. If <i> equals -1, returns all units (observer sees it all). */
+  /** Returns a String describing the game state: turn, score, state and
+   * locations of units visible to player <i>. If <i> equals -1, returns
+   * all units (observer sees it all). */
   public String getData (int player) {
     StringBuilder bui = new StringBuilder();
+    bui.append(String.format("%d %d %d\n", turn, score, gameOver));
     
     // find all visible units
     Set<PosUnit> visible = new HashSet<PosUnit>();
     for (Map.Entry<Position, Unit> entry : unitMap.entrySet()) {
       Position pos = entry.getKey();
       Unit unit = entry.getValue();
-      if (player != -1 && unit.owner != player) {
+      if (player != Constants.observer && unit.owner != player) {
         continue;
       }
       visible.add(new PosUnit(pos, unit));
       
       // add all units that this unit can see
-      if (player != -1) {
+      if (player != Constants.observer) {
         for (Position pos2 : visibility.visibleFrom(pos)) {
           if (!unitMap.containsKey(pos2)) {
             continue;
@@ -486,6 +488,15 @@ public class Game {
       bui.append(pu.toString());
       bui.append("\n");
     }
+    return bui.toString();
+  }
+  
+  /** Returns a String describing the map: terrain and visibility. */
+  public String getMapString () {
+    StringBuilder bui = new StringBuilder();
+    bui.append(terrain.toString());
+    bui.append("\n");
+    bui.append(Visibility.toString(terrain.r, terrain.c, visibility));
     return bui.toString();
   }
 }

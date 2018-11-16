@@ -8,8 +8,10 @@ import java.util.*;
  * units. */
 public class Terrain {
   public enum Type {
-    PLAINS, FOREST, WATER, SENTINEL
+    PLAINS, FOREST, WATER, SENTINEL, FINISH_LINE
   }
+  public static int SENTINEL_HEIGHT = 99;
+  
   public final int r, c;
   protected Type[][] terrain;
   protected int[][] elevation;
@@ -47,14 +49,20 @@ public class Terrain {
   }
   
   /** Is used to check scoring condition. */
-  public boolean inLastRow (Position pos) {
-    return pos.r == r-1;
+  public boolean inFinishLine (Position pos) {
+    return pos.r == r;
+  }
+  public boolean inFinishLine (int pos_r, int pos_c) {
+    return inFinishLine(new Position(pos_r, pos_c));
   }
   
   /** Returns the Terrain.Type at location [pos_r, pos_c]. If that is out
    * of bounds of the map, returns Type.SENTINEL */
   public Type terrainAt (int pos_r, int pos_c) {
     if (outOfBounds(pos_r, pos_c)) {
+      if (inFinishLine(pos_r, pos_c)) {
+        return Type.FINISH_LINE;
+      }
       return Type.SENTINEL;
     }
     return terrain[pos_r][pos_c];
@@ -64,10 +72,10 @@ public class Terrain {
   }
   
   /** Returns the height at location [pos_r, pos_c]. If that is out of
-   * the map, returns 0. */
+   * the map, returns SENTINEL_HEIGHT. */
   public int heightAt (int pos_r, int pos_c) {
     if (outOfBounds(pos_r, pos_c)) {
-      return 0;
+      return SENTINEL_HEIGHT;
     }
     return elevation[pos_r][pos_c];
   }
