@@ -11,16 +11,16 @@
   "license": "MIT",
   "dependencies": {
     "@babel/register": "^7.0.0",
-    "connected-react-router": "^5.0.1",
     "history": "^4.6.3",
+    "imuty": "^1.0.0",
     "prop-types": "^15.5.10",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-redux": "^5.0.2",
-    "react-router": "^4.1.2",
+    "recompose": "^0.30.0",
     "redux": "^4.0.0",
     "redux-actions": "^2.2.1",
-    "redux-localstorage": "^0.4.1",
+    "redux-logger": "^3.0.6",
     "redux-thunk": "^2.2.0"
   },
   "devDependencies": {
@@ -38,9 +38,13 @@
     "electron-builder": "^20.0.7",
     "electron-devtools-installer": "^2.2.4",
     "electron-mocha": "^6.0.1",
-    "eslint": "^5.1.0",
+    "eslint": "^5.9.0",
     "eslint-config-prettier": "^3.1.0",
-    "eslint-plugin-react": "^7.1.0",
+    "eslint-config-vacuumlabs": "^1.7.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-react": "^7.11.1",
+    "husky": "^1.1.4",
+    "lint-staged": "^8.0.5",
     "npm-run-all": "^4.0.1",
     "prettier": "^1.13.7",
     "redux-mock-store": "^1.2.2",
@@ -65,5 +69,16 @@
     "private:compile": "babel app/ --copy-files --out-dir build",
     "private:clean": "rimraf build",
     "private:format": "prettier \"babel.config.js\" \"scripts/*.js\" \"app/**/*.js\" \"test/**/*.js\""
+  },
+  "lint-staged": {
+    "{src}/**/*.{js,json,css,md}": [
+      "prettier-eslint --write \"src/**/*.{js,jsx,json,scss}\"",
+      "git add"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }

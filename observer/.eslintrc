@@ -1,6 +1,7 @@
 {
   "root": true,
-  "extends": ["eslint:recommended", "plugin:react/recommended", "prettier"],
+  "extends": "vacuumlabs",
+  "globals": { "document": true },
   "parser": "babel-eslint",
   "parserOptions": {
     "ecmaFeatures": {
@@ -9,17 +10,6 @@
     }
   },
   "plugins": ["react"],
-  "rules": {
-    "prefer-const": "warn",
-    "no-console": "off",
-    "no-loop-func": "warn",
-    "new-cap": "off",
-    "no-param-reassign": "warn",
-    "func-names": "off",
-    "no-unused-expressions": "error",
-    "block-scoped-var": "error",
-    "react/prop-types": "off"
-  },
   "settings": {
     "react": {
       "pragma": "React",
