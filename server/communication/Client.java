@@ -29,7 +29,8 @@ public class Client {
    * an IOException if there is no further input. */
   public String receive () throws IOException {
     try {
-      return sc.nextLine();
+      String res = sc.nextLine();
+      return res;
     }
     catch (NoSuchElementException exc) {
       throw new IOException("Error while receiving: scanner threw NoSuchElementException", exc);

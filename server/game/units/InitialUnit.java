@@ -1,7 +1,8 @@
 package server.game.units;
 
 import java.util.*;
-import server.game.map.Position;
+import server.game.map.*;
+import server.game.Constants;
 
 
 /** Specifies a unit's starting position, owner/faction, and type. */
@@ -33,6 +34,23 @@ public class InitialUnit {
     int n = sc.nextInt();
     for (int i = 0; i < n; i++) {
       res.add(InitialUnit.loadFrom(sc));
+    }
+    return res;
+  }
+  
+  /** Returns a default list of InitialUnits: the bottom row are defender
+   * units, and the topmost row are attacker units, except for water
+   * cells. */
+  public static List<InitialUnit> dummyStartingPositions (Terrain terra) {
+    List<InitialUnit> res = new ArrayList<InitialUnit>();
+    for (int i = 0; i < terra.c; i++) {
+      for (int j = 0; j < 2; j++) {
+        int row = (1 - j) * (terra.r - 1);
+        if (terra.terrainAt(row, i) != Terrain.Type.WATER) {
+          Unit.Type x = (i%2 == 1 ? Unit.Type.WARRIOR : Unit.Type.ARCHER);
+          res.add(new InitialUnit(j, x, new Position(row, i)));
+        }
+      }
     }
     return res;
   }

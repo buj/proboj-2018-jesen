@@ -419,7 +419,7 @@ public class Game {
       cmd = Command.loadFrom(str);
     }
     catch (NoSuchElementException | IndexOutOfBoundsException exc) {
-      System.err.println(String.format("Error while parsing command '%s': %s", str, exc.getMessage()));
+      System.err.println(String.format("Error while parsing command '%s': %s\n", str, exc.getMessage()));
       return;
     }
     stepper.command(player, cmd);
@@ -453,12 +453,17 @@ public class Game {
     return score;
   }
   
+  /** Returns the current turn number. */
+  public int getTurn () {
+    return turn;
+  }
+  
   /** Returns a String describing the game state: turn, score, state and
    * locations of units visible to player <i>. If <i> equals -1, returns
    * all units (observer sees it all). */
   public String getData (int player) {
     StringBuilder bui = new StringBuilder();
-    bui.append(String.format("%d %d %d\n", turn, score, gameOver));
+    bui.append(String.format("%d %d %d\n", turn, score, (gameOver ? 1 : 0)));
     
     // find all visible units
     Set<PosUnit> visible = new HashSet<PosUnit>();

@@ -1,14 +1,16 @@
 package server.game;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.time.*;
+import server.communication.Client;
 import server.game.logic.Game;
 
 
 /** A runnable that runs the game and has methods that clients can
  * use to communicate with the game (set commands, ...). */
-class GameServer implements Runnable {
+public class GameServer implements Runnable {
   protected Clock clock;
   
   protected Game game;
@@ -21,6 +23,8 @@ class GameServer implements Runnable {
   /** Constructs a game server that will run the provided game. The
    * provided game should be freshly constructed. */
   public GameServer (Game game0) {
+    clock = Clock.systemDefaultZone();
+    
     game = game0;
     atkCommands = new LinkedBlockingQueue<String>();
     defCommands = new LinkedBlockingQueue<String>();
@@ -41,6 +45,8 @@ class GameServer implements Runnable {
     Instant start = clock.instant(); // start of the turn
     
     while (!game.isGameOver()) {
+      System.err.format("GameServer: starting turn %d\n", game.getTurn());
+      
       // sleep a while, can't interrupt this...
       Instant target = start.plus(turnTime);
       while (true) {
@@ -49,11 +55,14 @@ class GameServer implements Runnable {
           break;
         }
         Duration duration = Duration.between(now, target);
+        int ns = duration.getNano();
+        int ms = ns / 1000000;
+        ns %= 1000000;
         try {
-          Thread.sleep(1000 * duration.getSeconds(), duration.getNano());
+          Thread.sleep(1000 * duration.getSeconds() + ms, ns);
         }
         catch (InterruptedException exc) {
-          System.err.format("Tried to interrupt game server... but it just ignores the interrupt. [%s]", exc.getMessage());
+          System.err.format("Tried to interrupt game server... but it just ignores the interrupt. [%s]\n", exc.getMessage());
         }
       }
       start = clock.instant();
@@ -84,9 +93,22 @@ class GameServer implements Runnable {
   
   //////////// CLIENT METHODS //////////////////////////////////////////
   
-  /** Returns the terrain and visibility information. */
-  public String getMap () {
-    return mapInfo;
+  /** Returns the player id, terrain and visibility information for player <id>. */
+  public String getIntro (int id) {
+    StringBuilder bui = new StringBuilder();
+    bui.append(id);
+    bui.append("\n");
+    bui.append(mapInfo);
+    return bui.toString();
+  }
+  
+  /** Returns the queue of commands of player <id>. */
+  BlockingQueue<String> commandsOf (int id) {
+    switch (id) {
+      case Constants.defender: return defCommands;
+      case Constants.attacker: return atkCommands;
+    }
+    return null;
   }
   
   /** Returns the list that provides information to player <id>. */
@@ -98,31 +120,74 @@ class GameServer implements Runnable {
     return obsHistory;
   }
   
-  /** Returns the current game information for player <id> (-1 is observer).
-   * This should only be called once by the client: when he requests information for
-   * the first time. Further inquiries should use 'getAtTime', to avoid
-   * obtaining the same information twice. */
-  public String getCurrent (int id) {
+  /** Returns the game state for player <id>, whose last received state
+   * information comes from time <t>. Waits until the history has size
+   * at least <t+2>, and then returns the last game state.
+   * 
+   * Clients that did not receive any information yet should ask with t = -1. */
+  public String getAtTime (int id, int t) {
     List<String> source = sourceOf(id);
     synchronized (source) {
+      while (source.size() <= t+1) {
+        try {
+          source.wait();
+        }
+        catch (InterruptedException exc) {
+          System.err.format("Interrupt during 'getAtTime' of gameServer... but it is ignored [%s]\n", exc.getMessage());
+        }
+      }
       int n = source.size();
       return source.get(n-1);
     }
   }
   
-  /** Returns the game state for player <id> at time <t>. */
-  public String getAtTime (int id, int t) {
-    List<String> source = sourceOf(id);
-    synchronized (source) {
-      while (source.size() <= t) {
-        try {
-          source.wait();
-        }
-        catch (InterruptedException exc) {
-          System.err.format("Interrupt during 'getAtTime' of gameServer... but it is ignored [%s]", exc.getMessage());
-        }
+  /** Starts a conversation with the provided client. */
+  public void communicateWith (Client client) throws IOException {
+    while (true) {
+      Scanner sc = new Scanner(client.receive());
+      String cmdType;
+      try {
+        cmdType = sc.next();
       }
-      return source.get(t);
+      catch (NoSuchElementException exc) {
+        System.err.format("GameServer: got empty message from client %d (id = %d)\n", client.hashCode(), client.id);
+        continue;
+      }
+      if (cmdType.equals("command")) {
+        if (client.id != Constants.defender && client.id != Constants.attacker) { // only real players may act!
+          continue;
+        }
+        String cmd;
+        try {
+          cmd = sc.nextLine();
+        }
+        catch (NoSuchElementException exc) {
+          System.err.format("GameServer: got 'command' but there is nothing further to clarify what command; from client %d (id = %d)\n", client.hashCode(), client.id);
+          continue;
+        }
+        commandsOf(client.id).add(cmd);
+      }
+      else
+      if (cmdType.equals("intro")) {
+        client.send(getIntro(client.id));
+      }
+      else
+      if (cmdType.equals("get")) {
+        int t;
+        try {
+          t = sc.nextInt();
+        }
+        catch (NoSuchElementException exc) {
+          System.err.format("GameServer: got 'get' but then expected a turn number, got something else; from client %d (id = %d)\n", client.hashCode(), client.id);
+          continue;
+        }
+        String data = getAtTime(client.id, t);
+        client.send(data);
+      }
+      else
+      if (cmdType.equals("finish")) {
+        break;
+      }
     }
   }
 }

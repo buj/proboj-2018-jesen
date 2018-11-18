@@ -55,16 +55,16 @@ public class Lobby {
         cmd = sc.next();
       }
       catch (NoSuchElementException exc) {
-        System.err.format("Lobby: got empty message from client %d", client.hashCode());
+        System.err.format("Lobby: got empty message from client %d (id = %d)\n", client.hashCode(), client.id);
         continue;
       }
-      if (cmd == "take") {
+      if (cmd.equals("take")) {
         int i;
         try {
           i = sc.nextInt();
         }
         catch (NoSuchElementException exc) {
-          System.err.format("Lobby: got 'take' from %d, but what follows is not an int", client.hashCode());
+          System.err.format("Lobby: got 'take' from %d, but what follows is not an int\n", client.hashCode());
           continue;
         }
         if (take(i)) {
@@ -77,13 +77,13 @@ public class Lobby {
         }
       }
       else
-      if (cmd == "free") {
+      if (cmd.equals("free")) {
         free(client.id);
         client.id = -1;
         client.send("ok");
       }
       else
-      if (cmd == "finish") {
+      if (cmd.equals("finish")) {
         break;
       }
     }

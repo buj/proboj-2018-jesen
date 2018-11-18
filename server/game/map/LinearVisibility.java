@@ -34,6 +34,9 @@ public class LinearVisibility implements Visibility {
           int lim = range - Math.abs(di);
           for (int dj = -lim; dj <= lim; dj++) {
             Position B = new Position(i + di, j + dj);
+            if (map.outOfBounds(B)) {
+              continue;
+            }
             
             // test: can we see? if so, extend the lists
             if (!lineOfSight(between(A, B), map)) {
@@ -107,7 +110,7 @@ public class LinearVisibility implements Visibility {
       }
     }
     int h_start = map.heightAt(path.get(0));
-    int h_target = map.heightAt(path.get(n));
+    int h_target = map.heightAt(path.get(n-1));
     for (int i = 1; i < n - 1; i++) {
       int hi = map.heightAt(path.get(i));
       if (map.terrainAt(path.get(i)) == Terrain.Type.FOREST) { // forests artificially increase height by 1

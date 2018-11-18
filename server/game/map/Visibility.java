@@ -29,21 +29,20 @@ public interface Visibility {
    * to bottom-right [r-1, c-1], columns are iterated faster. */
   static String toString (int r, int c, Visibility vis) {
     StringBuilder bui = new StringBuilder();
-    for (int i = 0; i < r; i++) { // first, visibleFrom
+    for (int i = 0; i < r; i++) {
       for (int j = 0; j < c; j++) {
-        boolean first = true;
-        for (Position pos : vis.visibleFrom(i, j)) {
-          if (!first) {
-            bui.append(" ");
-          }
-          first = false;
+        Set<Position> set = vis.visibleFrom(i, j);
+        bui.append(set.size());
+        for (Position pos : set) {
+          bui.append(" ");
           bui.append(pos.toString());
         }
         bui.append("\n");
       }
     }
+    /*
     bui.append("\n");
-    for (int i = 0; i < r; i++) { // now, canSee
+    for (int i = 0; i < r; i++) {
       for (int j = 0; j < c; j++) {
         boolean first = true;
         for (Position pos : vis.canSee(i, j)) {
@@ -56,6 +55,7 @@ public interface Visibility {
         bui.append("\n");
       }
     }
+    */
     return bui.toString();
   }
 }

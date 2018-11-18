@@ -16,6 +16,20 @@ public class Terrain {
   protected Type[][] terrain;
   protected int[][] elevation;
   
+  /** Constructs an empty terrain with the given dimensions (plains
+   * everywhere, elevation 0). */
+  public Terrain (int r0, int c0) {
+    r = r0;
+    c = c0;
+    terrain = new Type[r][c];
+    for (int i = 0; i < r; i++) {
+      for (int j = 0; j < c; j++) {
+        terrain[i][j] = Type.PLAINS;
+      }
+    }
+    elevation = new int[r][c];
+  }
+  
   /** Constructs the Terrain by reading from the provided Scanner. */
   public Terrain (Scanner sc) {
     r = sc.nextInt();
