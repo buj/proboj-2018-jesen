@@ -93,12 +93,14 @@ public class GameServer implements Runnable {
   
   //////////// CLIENT METHODS //////////////////////////////////////////
   
-  /** Returns the player id, terrain and visibility information for player <id>. */
+  /** Returns the player id, terrain, visibility, and initial unit
+   * configuration information for player <id>. */
   public String getIntro (int id) {
     StringBuilder bui = new StringBuilder();
     bui.append(id);
     bui.append("\n");
     bui.append(mapInfo);
+    bui.append(getAtTime(id, -1));
     return bui.toString();
   }
   
@@ -128,7 +130,7 @@ public class GameServer implements Runnable {
   public String getAtTime (int id, int t) {
     List<String> source = sourceOf(id);
     synchronized (source) {
-      while (source.size() <= t+1) {
+      while (source.size() <= t) {
         try {
           source.wait();
         }
@@ -139,6 +141,22 @@ public class GameServer implements Runnable {
       int n = source.size();
       return source.get(n-1);
     }
+  }
+  
+  /** Returns the entire history, from the point of view of player <id>.
+   * Should only be called after the game concludes. */
+  public String getHistory (int id) {
+    List<String> source = sourceOf(id);
+    StringBuilder bui = new StringBuilder();
+    boolean first = true;
+    for (String str : source) {
+      if (!first) {
+        bui.append("\n");
+      }
+      first = false;
+      bui.append(str);
+    }
+    return bui.toString();
   }
   
   /** Starts a conversation with the provided client. */

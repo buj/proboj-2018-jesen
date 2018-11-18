@@ -22,7 +22,7 @@ public class Server implements Runnable {
     
     // creates the game
     int seed = 4247;
-    Terrain terra = new Terrain(20, 20);
+    Terrain terra = new Terrain(5, 5);
     List<InitialUnit> initial = InitialUnit.dummyStartingPositions(terra);
     Game game = new Game(seed, terra, initial);
     gserver = new GameServer(game);
@@ -47,6 +47,19 @@ public class Server implements Runnable {
     }
     catch (InterruptedException exc) {
       System.err.format("Server: Interrupt while waiting for game server to die. Gonna die non-gracefully [%s]\n", exc.getMessage());
+    }
+    // create observation files
+    String[] names = new String[]{"observer", "defender", "attacker"};
+    for (int id = -1; id <= 1; id++) {
+      try {
+        String filename = String.format("%s.log", names[1 + id]);
+        PrintStream fout = new PrintStream(new FileOutputStream(filename));
+        fout.print(gserver.getHistory(id));
+        fout.close();
+      }
+      catch (FileNotFoundException exc) {
+        System.err.format("Server: cannot create observation file number %d [%s]\n", id, exc.getMessage());
+      }
     }
   }
   

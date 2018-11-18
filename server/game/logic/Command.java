@@ -7,7 +7,7 @@ import java.util.*;
 /** Represents a command to a unit. */
 public class Command {
   public enum Type {
-    ATTACK, MOVE
+    MOVE, ATTACK
   }
   public final Type type;
   public final Position pos, tgt;

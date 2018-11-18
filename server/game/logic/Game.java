@@ -102,14 +102,16 @@ public class Game {
       if (pos.distTo(tgt) != 1) {
         return false;
       }
-      // is the terrain not water?
+      // is the terrain not water and not sentinel?
       Terrain.Type tt = terrain.terrainAt(tgt);
-      if (tt == Terrain.Type.WATER) {
+      if (tt == Terrain.Type.WATER || tt == Terrain.Type.SENTINEL) {
         return false;
       }
-      // is it the finish line? if so, all is well
+      // is it the finish line? then, result depends on whether the
+      // moving unit is an attacker
       if (tt == Terrain.Type.FINISH_LINE) {
-        return true;
+        Unit unit = unitMap.get(pos);
+        return (unit != null && unit.owner == Constants.attacker);
       }
       // is the height difference not too large?
       int h0 = terrain.heightAt(pos);
@@ -132,10 +134,12 @@ public class Game {
       }
       // enough stamina?
       Unit unit = unitMap.get(pos);
-      if (unit.getStamina() < staminaCost(pos, tgt)) {
+      int cost = staminaCost(pos, tgt);
+      if (unit.getStamina() < cost) {
         return;
       }
       // finish
+      staminaChange(pos, -cost);
       moveMap.putIfAbsent(tgt, new ArrayList<Position>());
       moveMap.get(tgt).add(pos);
     }
@@ -174,10 +178,9 @@ public class Game {
       atkMap.putIfAbsent(tgt, new ArrayList<Position>());
       atkMap.get(tgt).add(pos);
       if (attacker.type == Unit.Type.WARRIOR) {
-        // loses stamina
+        // loses stamina and tries to move there
         int cost = staminaCost(pos, tgt);
         staminaChange(pos, -cost);
-        // tries to move there
         moveMap.putIfAbsent(tgt, new ArrayList<Position>());
         moveMap.get(tgt).add(pos);
       }

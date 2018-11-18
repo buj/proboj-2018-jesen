@@ -1,4 +1,4 @@
-import argparse, subprocess, socket, traceback
+import argparse, subprocess, socket, traceback, sys
 
 
 def truncate(filename):
@@ -15,7 +15,7 @@ parser.add_argument("--port", type = int, help = "the port to connect to", defau
 parser.add_argument("--log", help = "where to create the log file")
 args = parser.parse_args()
 
-ferr = None
+ferr = sys.stderr
 if args.log is not None:
   truncate(args.log)
   ferr = open(args.log, 'a')
