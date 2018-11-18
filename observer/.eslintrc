@@ -1,0 +1,23 @@
+{
+  "root": true,
+  "extends": "vacuumlabs",
+  "globals": { "document": true },
+  "parser": "babel-eslint",
+  "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true,
+      "modules": true
+    }
+  },
+  "plugins": ["react"],
+  "settings": {
+    "react": {
+      "pragma": "React",
+      "version": "16.2"
+    }
+  },
+  "env": {
+    "es6": true,
+    "node": true
+  }
+}
