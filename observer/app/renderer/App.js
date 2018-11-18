@@ -2,6 +2,7 @@ import React from 'react'
 import {withState, compose} from 'recompose'
 import {updateValue as _updateValue} from './actions'
 import {connect} from 'react-redux'
+import electron from 'electron'
 
 const App = ({count, setCount, cnt, updateValue}) => {
   return [
@@ -11,6 +12,7 @@ const App = ({count, setCount, cnt, updateValue}) => {
     <button key="2" onClick={() => updateValue(['cnt'], cnt + 1)}>
       {cnt}
     </button>,
+    <p key="3">{JSON.stringify(electron.remote.process.argv)}</p>,
   ]
 }
 

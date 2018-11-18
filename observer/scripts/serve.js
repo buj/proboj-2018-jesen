@@ -1,19 +1,19 @@
-import { spawn } from 'child_process';
-import electron from 'electron';
-import browserSync from 'browser-sync';
-import browserSyncConnectUtils from 'browser-sync/dist/connect-utils';
+import {spawn} from 'child_process'
+import electron from 'electron'
+import browserSync from 'browser-sync'
+import browserSyncConnectUtils from 'browser-sync/dist/connect-utils'
 
-const bsync = browserSync.create();
+const bsync = browserSync.create()
 
 const getRootUrl = (options) => {
-  const port = options.get('port');
-  return `http://localhost:${port}`;
-};
+  const port = options.get('port')
+  return `http://localhost:${port}`
+}
 
 const getClientUrl = (options) => {
-  const pathname = browserSyncConnectUtils.clientScript(options);
-  return getRootUrl(options) + pathname;
-};
+  const pathname = browserSyncConnectUtils.clientScript(options)
+  return getRootUrl(options) + pathname
+}
 
 bsync.init(
   {
@@ -31,9 +31,13 @@ bsync.init(
     },
   },
   (err, bs) => {
-    if (err) return console.error(err);
+    if (err) {
+      // eslint-disable-next-line
+      console.error(err)
+      return
+    }
 
-    const child = spawn(electron, ['.', '--enable-logging'], {
+    const child = spawn(electron, ['.'], {
       env: {
         ...{
           NODE_ENV: 'development',
@@ -42,12 +46,12 @@ bsync.init(
         ...process.env,
       },
       stdio: 'inherit',
-    });
+    })
 
     child.on('close', () => {
-      process.exit();
-    });
+      process.exit()
+    })
 
-    bsync.watch('build/**/*').on('change', bsync.reload);
-  },
-);
+    bsync.watch('build/**/*').on('change', bsync.reload)
+  }
+)
