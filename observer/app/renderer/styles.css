@@ -1,0 +1,14 @@
+body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+#app {
+  display: grid;
+  height: 100%;
+}
+
+#app canvas {
+  margin: auto;
+}

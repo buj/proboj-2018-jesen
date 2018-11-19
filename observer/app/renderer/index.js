@@ -1,18 +1,16 @@
-import React from 'react'
-import ReactDOM from 'react-dom'
-import {Provider} from 'react-redux'
-
-import App from './App'
-import getInitialState from './initialState'
-import configureStore from './store/configureStore'
-
-const store = configureStore(getInitialState())
+import createObserver from './App'
+import Stats from 'stats.js'
 
 const rootElement = document.querySelector(document.currentScript.getAttribute('data-container'))
+rootElement.appendChild(createObserver(rootElement).view)
 
-ReactDOM.render(
-  <Provider store={store}>
-    <App />
-  </Provider>,
-  rootElement
-)
+if (process.env.NODE_ENV === 'development') {
+  const stats = new Stats()
+  stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+  document.body.appendChild(stats.dom)
+
+  window.requestAnimationFrame(function loop() {
+    stats.update()
+    window.requestAnimationFrame(loop)
+  })
+}

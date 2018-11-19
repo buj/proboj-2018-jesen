@@ -10,18 +10,13 @@
   "repository": "https://github.com/jschr/electron-react-redux-boilerplate",
   "license": "MIT",
   "dependencies": {
+    "@babel/preset-react": "^7.0.0",
     "@babel/register": "^7.0.0",
-    "history": "^4.6.3",
+    "babel-eslint": "^10.0.1",
+    "browser-sync": "^2.26.3",
     "imuty": "^1.0.0",
-    "prop-types": "^15.5.10",
-    "react": "^16.2.0",
-    "react-dom": "^16.2.0",
-    "react-redux": "^5.0.2",
-    "recompose": "^0.30.0",
-    "redux": "^4.0.0",
-    "redux-actions": "^2.2.1",
-    "redux-logger": "^3.0.6",
-    "redux-thunk": "^2.2.0"
+    "pixi.js": "^4.8.2",
+    "stats.js": "^0.17.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.1.2",
@@ -30,16 +25,10 @@
     "@babel/plugin-proposal-class-properties": "^7.1.0",
     "@babel/plugin-proposal-decorators": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
-    "@babel/preset-react": "^7.0.0",
-    "babel-eslint": "^10.0.1",
-    "browser-sync": "^2.23.6",
-    "chai": "^4.1.0",
     "electron": "^3.0.0",
     "electron-builder": "^20.0.7",
     "electron-devtools-installer": "^2.2.4",
-    "electron-mocha": "^6.0.1",
     "eslint": "^5.9.0",
-    "eslint-config-prettier": "^3.1.0",
     "eslint-config-vacuumlabs": "^1.7.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-react": "^7.11.1",
@@ -47,7 +36,6 @@
     "lint-staged": "^8.0.5",
     "npm-run-all": "^4.0.1",
     "prettier": "^1.13.7",
-    "redux-mock-store": "^1.2.2",
     "rimraf": "^2.5.4"
   },
   "scripts": {
