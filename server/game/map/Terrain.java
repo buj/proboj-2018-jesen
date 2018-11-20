@@ -10,7 +10,6 @@ public class Terrain {
   public enum Type {
     PLAINS, FOREST, WATER, SENTINEL, FINISH_LINE
   }
-  public static int SENTINEL_HEIGHT = 99;
   
   public final int r, c;
   protected Type[][] terrain;
@@ -28,6 +27,30 @@ public class Terrain {
       }
     }
     elevation = new int[r][c];
+  }
+  
+  /** A randomly constructed terrain with elevations 0 or 1 and
+   * occasional forests/water. */
+  public static Terrain mildRandom (Random rng, int r, int c) {
+    Terrain res = new Terrain(r, c);
+    for (int i = 0; i < r; i++) {
+      for (int j = 0; j < c; j++) {
+        // determine elevation
+        int h = rng.nextInt(2);
+        res.elevation[i][j] = h;
+        
+        // determine terrain type
+        double roll = rng.nextDouble();
+        if (roll < 0.3) {
+          res.terrain[i][j] = Type.FOREST;
+        }
+        else
+        if (roll < 0.45 && h == 0) {
+          res.terrain[i][j] = Type.WATER;
+        }
+      }
+    }
+    return res;
   }
   
   /** Constructs the Terrain by reading from the provided Scanner. */
@@ -89,7 +112,7 @@ public class Terrain {
    * the map, returns SENTINEL_HEIGHT. */
   public int heightAt (int pos_r, int pos_c) {
     if (outOfBounds(pos_r, pos_c)) {
-      return SENTINEL_HEIGHT;
+      return 0;
     }
     return elevation[pos_r][pos_c];
   }

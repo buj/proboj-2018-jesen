@@ -189,9 +189,9 @@ struct MapaJednotiek {
     _id[x.poz.r][x.poz.s] = x.id;
   }
   
-  /** Vrati maximalne id spomedzi jednotiek. */
-  int maxId () const {
-    return (int)_jednotky.size() - 1;
+  /** Vrati pociatocny pocet jednotiek. */
+  int pocetJednotiek () const {
+    return (int)_jednotky.size();
   }
   
   /** Vrati jednotku nachadzajucu sa na policku [i, j]. Ak tam nie je

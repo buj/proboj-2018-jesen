@@ -12,6 +12,7 @@ import server.game.*;
 
 /** Runs it all. */
 public class Server implements Runnable {
+  protected Random rng;
   protected Listener listener;
   protected GameServer gserver;
   
@@ -21,10 +22,10 @@ public class Server implements Runnable {
     Lobby lobby = new Lobby();
     
     // creates the game
-    int seed = 4247;
-    Terrain terra = new Terrain(5, 5);
+    rng = new Random(1023456789);
+    Terrain terra = Terrain.mildRandom(rng, 10, 10);
     List<InitialUnit> initial = InitialUnit.dummyStartingPositions(terra);
-    Game game = new Game(seed, terra, initial);
+    Game game = new Game(rng, terra, initial);
     gserver = new GameServer(game);
     
     // creates the listener

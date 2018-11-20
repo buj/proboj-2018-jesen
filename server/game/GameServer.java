@@ -34,19 +34,18 @@ public class GameServer implements Runnable {
     atkHistory = new ArrayList<String>();
     defHistory = new ArrayList<String>();
     obsHistory = new ArrayList<String>();
-    for (int id = -1; id <= 1; id++) {
+    for (int id = 1; id >= -1; id--) {
       sourceOf(id).add(game.getData(id));
     }
   }
   
   @Override
   public void run () {
+    System.err.format("GameServer: starting turn %d\n", game.getTurn());
     Duration turnTime = Duration.ofMillis(Constants.turnMillis); // duration of one turn
     Instant start = clock.instant(); // start of the turn
     
     while (!game.isGameOver()) {
-      System.err.format("GameServer: starting turn %d\n", game.getTurn());
-      
       // sleep a while, can't interrupt this...
       Instant target = start.plus(turnTime);
       while (true) {
@@ -81,10 +80,16 @@ public class GameServer implements Runnable {
       
       // advance the game state, update histories
       game.advance();
-      for (int id = -1; id <= 1; id++) {
+      System.err.format("GameServer: starting turn %d\n", game.getTurn());
+      for (int id = 1; id >= -1; id--) {
         List<String> source = sourceOf(id);
         synchronized (source) {
           source.add(game.getData(id));
+        }
+      }
+      for (int id = 1; id >= -1; id--) {
+        List<String> source = sourceOf(id);
+        synchronized (source) {
           source.notifyAll();
         }
       }
@@ -93,22 +98,31 @@ public class GameServer implements Runnable {
   
   //////////// CLIENT METHODS //////////////////////////////////////////
   
-  /** Returns the player id, terrain, visibility, and initial unit
+  /** Returns the player id, terrain, visibility, and current unit
    * configuration information for player <id>. */
   public String getIntro (int id) {
+    StringBuilder bui = new StringBuilder();
+    bui.append(getStatic(id));
+    bui.append("\n");
+    bui.append(getAtTime(id, -1));
+    return bui.toString();
+  }
+  
+  /** Returns the static parts of the game: the player's id, terrain
+   * and visibility. */
+  public String getStatic (int id) {
     StringBuilder bui = new StringBuilder();
     bui.append(id);
     bui.append("\n");
     bui.append(mapInfo);
-    bui.append(getAtTime(id, -1));
     return bui.toString();
   }
   
   /** Returns the queue of commands of player <id>. */
   BlockingQueue<String> commandsOf (int id) {
     switch (id) {
-      case Constants.defender: return defCommands;
       case Constants.attacker: return atkCommands;
+      case Constants.defender: return defCommands;
     }
     return null;
   }
@@ -116,15 +130,15 @@ public class GameServer implements Runnable {
   /** Returns the list that provides information to player <id>. */
   List<String> sourceOf (int id) {
     switch (id) {
-      case Constants.defender: return defHistory;
       case Constants.attacker: return atkHistory;
+      case Constants.defender: return defHistory;
     }
     return obsHistory;
   }
   
   /** Returns the game state for player <id>, whose last received state
    * information comes from time <t>. Waits until the history has size
-   * at least <t+2>, and then returns the last game state.
+   * at least <t+1>, and then returns the last game state.
    * 
    * Clients that did not receive any information yet should ask with t = -1. */
   public String getAtTime (int id, int t) {
@@ -146,8 +160,11 @@ public class GameServer implements Runnable {
   /** Returns the entire history, from the point of view of player <id>.
    * Should only be called after the game concludes. */
   public String getHistory (int id) {
-    List<String> source = sourceOf(id);
     StringBuilder bui = new StringBuilder();
+    bui.append(getStatic(id));
+    bui.append("\n");
+    
+    List<String> source = sourceOf(id);
     boolean first = true;
     for (String str : source) {
       if (!first) {
@@ -162,6 +179,10 @@ public class GameServer implements Runnable {
   /** Starts a conversation with the provided client. */
   public void communicateWith (Client client) throws IOException {
     while (true) {
+      try {
+        Thread.sleep(5);
+      }
+      catch (InterruptedException exc) {}
       Scanner sc = new Scanner(client.receive());
       String cmdType;
       try {
@@ -172,7 +193,7 @@ public class GameServer implements Runnable {
         continue;
       }
       if (cmdType.equals("command")) {
-        if (client.id != Constants.defender && client.id != Constants.attacker) { // only real players may act!
+        if (client.id != Constants.attacker && client.id != Constants.defender) { // only real players may act!
           continue;
         }
         String cmd;

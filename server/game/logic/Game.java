@@ -21,8 +21,8 @@ public class Game {
   protected boolean gameOver;
   
   /** Constructs a Game from the given terrain and list of initialUnits. */
-  public Game (long seed, Terrain terrain0, List<InitialUnit> initial) {
-    rng = new Random(seed);
+  public Game (Random rng0, Terrain terrain0, List<InitialUnit> initial) {
+    rng = rng0;
     terrain = terrain0;
     visibility = new LinearVisibility(terrain, 3);
     unitMap = new HashMap<Position, Unit>();
@@ -142,6 +142,7 @@ public class Game {
       staminaChange(pos, -cost);
       moveMap.putIfAbsent(tgt, new ArrayList<Position>());
       moveMap.get(tgt).add(pos);
+      exhausted.add(pos);
     }
     
     /** Unit at position <pos> wants to attack position <tgt>. 
@@ -184,6 +185,7 @@ public class Game {
         moveMap.putIfAbsent(tgt, new ArrayList<Position>());
         moveMap.get(tgt).add(pos);
       }
+      exhausted.add(pos);
     }
     
     /** Player <player> has given the command <cmd>. We check the
@@ -198,7 +200,6 @@ public class Game {
       if (exhausted.contains(cmd.pos)) {
         return;
       }
-      exhausted.add(cmd.pos);
       // finish
       if (cmd.type == Command.Type.ATTACK) {
         attackCommand(cmd.pos, cmd.tgt);
@@ -468,33 +469,32 @@ public class Game {
     StringBuilder bui = new StringBuilder();
     bui.append(String.format("%d %d %d\n", turn, score, (gameOver ? 1 : 0)));
     
-    // find all visible units
-    Set<PosUnit> visible = new HashSet<PosUnit>();
+    // find all visible positions with units on them
+    Set<Position> visible = new HashSet<Position>();
     for (Map.Entry<Position, Unit> entry : unitMap.entrySet()) {
       Position pos = entry.getKey();
       Unit unit = entry.getValue();
       if (player != Constants.observer && unit.owner != player) {
         continue;
       }
-      visible.add(new PosUnit(pos, unit));
+      visible.add(pos);
       
-      // add all units that this unit can see
+      // add all positions that this unit can see
       if (player != Constants.observer) {
         for (Position pos2 : visibility.visibleFrom(pos)) {
           if (!unitMap.containsKey(pos2)) {
             continue;
           }
-          Unit unit2 = unitMap.get(pos2);
-          visible.add(new PosUnit(pos2, unit2));
+          visible.add(pos2);
         }
       }
     }
-    // put it all into stringbuilder
+    // put these units into stringbuilder
     bui.append(visible.size());
     bui.append("\n");
-    for (PosUnit pu : visible) {
-      bui.append(pu.toString());
-      bui.append("\n");
+    for (Position pos : visible) {
+      Unit unit = unitMap.get(pos);
+      bui.append(String.format("%s %s\n", pos.toString(), unit.toString()));
     }
     return bui.toString();
   }

@@ -22,15 +22,14 @@ public class Client {
     socket = socket0;
     id = -1;
     sc = new Scanner(socket.getInputStream());
-    ps = new PrintStream(socket.getOutputStream(), true); // flushes after each newline
+    ps = new PrintStream(socket.getOutputStream());
   }
   
   /** Blocking. Waits for and returns the next line of input. Throws
    * an IOException if there is no further input. */
   public String receive () throws IOException {
     try {
-      String res = sc.nextLine();
-      return res;
+      return sc.nextLine();
     }
     catch (NoSuchElementException exc) {
       throw new IOException("Error while receiving: scanner threw NoSuchElementException", exc);
