@@ -1,8 +1,8 @@
-import createObserver from './App'
+import createObserver from './observer'
 import Stats from 'stats.js'
 
 const rootElement = document.querySelector(document.currentScript.getAttribute('data-container'))
-rootElement.appendChild(createObserver(rootElement).view)
+createObserver(rootElement)
 
 if (process.env.NODE_ENV === 'development') {
   const stats = new Stats()

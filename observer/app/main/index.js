@@ -43,8 +43,8 @@ app.on('ready', async () => {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 800,
-    minWidth: 640,
-    minHeight: 480,
+    maximizable: true,
+    autoHideMenuBar: true,
     show: false,
   })
 
