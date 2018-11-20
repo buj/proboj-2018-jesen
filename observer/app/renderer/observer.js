@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js'
 import electron from 'electron'
 import fs from 'fs'
 import path from 'path'
-import {debounce, range} from 'lodash'
+import {debounce, forEach} from 'lodash'
 
 const MAX_CELL_SIZE = 100
 
@@ -12,13 +12,19 @@ const TILES = {
   WATER: 2,
 }
 
+const UNIT_TYPES = {
+  WARRIOR: 0,
+  ARCHER: 1,
+}
+
 const TILE_TEXTURES = {
   [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
   [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest1.jpeg'),
   [TILES.WATER]: PIXI.Texture.fromImage('../assets/water3.jpg'),
 }
 
-const tiles = {}
+const PLAYER_COLORS = [255, 16711680]
+
 const state = {
   // constants
   width: 500,
@@ -33,6 +39,12 @@ const state = {
   states: [],
   // NOTE: these are derived
   cellSize: null,
+  currentRound: 0,
+  nextStateFraction: 0,
+  speed: 1,
+  unitGraphics: {},
+  pixiApp: null,
+  unitsContainer: null,
 }
 
 const readObserverLog = () => {
@@ -91,24 +103,25 @@ const readObserverLog = () => {
 
       // game states
       while (pos < tokens.length) {
-        const state = {}
-        state.round = tokens[pos++]
-        state.score = tokens[pos++]
-        state.isFinalRound = tokens[pos++]
+        const st = {}
+        st.round = tokens[pos++]
+        st.score = tokens[pos++]
+        st.isFinalRound = tokens[pos++]
 
-        state.unitCount = tokens[pos++]
-        state.units = []
-        for (let i = 0; i < state.unitCount; i++) {
-          state.units.push({
-            x: tokens[pos]++,
-            y: tokens[pos]++,
-            id: tokens[pos]++,
-            owner: tokens[pos]++,
-            type: tokens[pos]++,
-            hp: tokens[pos]++,
-            stamina: tokens[pos]++,
+        st.unitCount = tokens[pos++]
+        st.units = []
+        for (let i = 0; i < st.unitCount; i++) {
+          st.units.push({
+            x: tokens[pos++],
+            y: tokens[pos++],
+            id: tokens[pos++],
+            owner: tokens[pos++],
+            type: tokens[pos++],
+            hp: tokens[pos++],
+            stamina: tokens[pos++],
           })
         }
+        state.states.push(st)
       }
       state.cellSize = Math.min(
         window.innerWidth / state.m,
@@ -120,8 +133,8 @@ const readObserverLog = () => {
   })
 }
 
-const renderMapTiles = (pixiApp) => {
-  const {cellSize, n, m, terrain, heights} = state
+const renderMapTiles = () => {
+  const {cellSize, n, m, terrain, heights, pixiApp} = state
   const terrainContainer = new PIXI.Container()
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
@@ -139,53 +152,117 @@ const renderMapTiles = (pixiApp) => {
   pixiApp.stage.addChild(terrainContainer)
 }
 
-const setEventListeners = (pixiApp) => {
+const setEventListeners = () => {
   window.addEventListener(
     'resize',
     debounce(() => {
       // eslint-disable-next-line
-      rerenderUI(pixiApp)
+      rerenderUI()
     }, 100)
   )
 }
 
 const createPixiApp = () => {
-  const pixiApp = new PIXI.Application(state.width, state.height, {
+  state.pixiApp = new PIXI.Application(state.width, state.height, {
     powerPreference: 'high-performance',
   })
-  return pixiApp
 }
 
-const tick = (delta) => {
-  for (let i = 0; i < 100; i++) {
-    tiles[i].setTransform(
-      tiles[i].x + (Math.random() < 0.5 ? -1 : 1) * 1,
-      tiles[i].y + (Math.random() < 0.5 ? -1 : 1) * 1
-    )
+const tick = (tickDelta) => {
+  const {states, currentRound, unitGraphics, speed, cellSize} = state
+  if (states[currentRound].isFinalRound) {
+    console.log('FINAL ROUND ENDED')
+    return
+  }
+  const diff = {}
+  states[currentRound].units.forEach((unit) => {
+    diff[unit.id] = {
+      x: unit.x * cellSize,
+      y: unit.y * cellSize,
+      rawX: unit.x * cellSize,
+      rawY: unit.y * cellSize,
+      type: unit.type,
+      delta: false,
+    }
+  })
+  const next = state.nextStateFraction + tickDelta * speed
+  states[currentRound + Math.floor(next)].units.forEach((unit) => {
+    diff[unit.id].x -= unit.x * cellSize
+    diff[unit.id].y -= unit.y * cellSize
+    diff[unit.id].delta = true
+  })
+
+  forEach(diff, ({x, y, delta, rawX, rawY, type}, id) => {
+    if (!delta) {
+      state.unitsContainer.removeChild(unitGraphics[id])
+      delete unitGraphics[id]
+    } else {
+      //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
+      const centering = type === UNIT_TYPES.ARCHER ? cellSize / 6 : 0
+      unitGraphics[id].x = rawX - next * x + centering
+      unitGraphics[id].y = rawY - next * y + centering
+      if (x !== 0) state.speed = 0.05
+    }
+  })
+  state.nextStateFraction = next
+  if (Math.floor(next) >= 1) {
+    state.nextStateFraction = 0
+    console.log(state.currentRound)
+    // must be accessed through state
+    state.currentRound += Math.floor(next)
   }
 }
 
 const updateCellSize = () => {
-  state.cellSize = Math.min(window.innerWidth / state.m, window.innerHeight / state.n)
+  state.cellSize = Math.min(
+    window.innerWidth / state.m,
+    window.innerHeight / state.n,
+    MAX_CELL_SIZE
+  )
 }
 
-const rerenderUI = (pixiApp) => {
-  pixiApp.stage.removeChildren()
+const renderUnits = () => {
+  state.unitsContainer = new PIXI.Container()
+  const {currentRound, states, cellSize, pixiApp} = state
+  state.unitGraphics = {}
+
+  states[currentRound].units.forEach((unit) => {
+    const g = new PIXI.Graphics()
+    g.beginFill(PLAYER_COLORS[unit.owner])
+    if (unit.type === UNIT_TYPES.WARRIOR) {
+      g.drawCircle(cellSize / 2, cellSize / 2, cellSize / 3)
+      g.x = cellSize * unit.x
+      g.y = cellSize * unit.y
+    } else {
+      g.drawRect(0, 0, (cellSize * 2) / 3, (cellSize * 2) / 3)
+      const free = cellSize / 3
+      g.x = cellSize * unit.x + free / 2
+      g.y = cellSize * unit.y + free / 2
+    }
+    state.unitGraphics[unit.id] = g
+    state.unitsContainer.addChild(g)
+  })
+  pixiApp.stage.addChild(state.unitsContainer)
+}
+
+const rerenderUI = () => {
+  state.pixiApp.stage.removeChildren()
   updateCellSize()
-  renderMapTiles(pixiApp)
-  setEventListeners(pixiApp)
+  renderMapTiles()
+  setEventListeners()
+  renderUnits()
 }
 
 const createObserver = async (rootElement) => {
   await readObserverLog()
-  const pixiApp = createPixiApp()
-  rerenderUI(pixiApp)
+  createPixiApp()
+  rerenderUI()
 
   // game loop
-  pixiApp.ticker.add((delta) => {
-    //tick(delta)
+  state.pixiApp.ticker.add((delta) => {
+    tick(delta)
   })
-  rootElement.appendChild(pixiApp.view)
+  rootElement.appendChild(state.pixiApp.view)
 }
 
 export default createObserver
