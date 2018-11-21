@@ -24,12 +24,12 @@ const TILE_TEXTURES = {
 }
 
 const PLAYER_COLORS = [255, 16711680]
-const SPEED_STEP = 0.01
+const SPEED_STEP = 0.005
 
 const state = {
   // constants
-  width: 500,
-  height: 400,
+  width: 1000,
+  height: 700,
   // these are loaded from observer log file
   mapType: null,
   n: null,
@@ -42,7 +42,7 @@ const state = {
   cellSize: null,
   currentRound: 0,
   nextStateFraction: 0,
-  speed: 1,
+  speed: 0.2,
   unitGraphics: {},
   pixiApp: null,
   unitsContainer: null,
@@ -164,11 +164,10 @@ const setEventListeners = () => {
   window.addEventListener('keydown', (e) => {
     switch (e.key) {
       case '+':
-        state.speed += SPEED_STEP
+        state.speed = Math.min(state.speed + SPEED_STEP, 1)
         break
       case '-':
         state.speed = Math.max(state.speed - SPEED_STEP, 0)
-        console.log(state.speed)
         break
       case ' ':
         if (state.savedSpeed !== undefined) {
@@ -182,10 +181,12 @@ const setEventListeners = () => {
       default:
         break
     }
+    document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
   })
 }
 
 const createPixiApp = () => {
+  electron.remote.getCurrentWindow().setContentSize(state.width, state.height)
   state.pixiApp = new PIXI.Application(state.width, state.height, {
     powerPreference: 'high-performance',
   })
@@ -193,8 +194,9 @@ const createPixiApp = () => {
 
 const tick = (tickDelta) => {
   const {states, currentRound, unitGraphics, speed, cellSize} = state
+  document.getElementById('score').innerHTML = states[currentRound].score
   if (states[currentRound].isFinalRound) {
-    console.log('FINAL ROUND ENDED')
+    document.getElementById('modal').classList.add('visible')
     return
   }
   const diff = {}
@@ -208,8 +210,7 @@ const tick = (tickDelta) => {
       delta: false,
     }
   })
-  const next = Math.min(1, state.nextStateFraction + tickDelta * speed)
-  console.log(next, speed)
+  state.nextStateFraction = Math.min(1, state.nextStateFraction + tickDelta * speed)
   states[currentRound + 1].units.forEach((unit) => {
     diff[unit.id].x -= unit.x * cellSize
     diff[unit.id].y -= unit.y * cellSize
@@ -223,15 +224,13 @@ const tick = (tickDelta) => {
     } else {
       //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
       const centering = type === UNIT_TYPES.ARCHER ? cellSize / 6 : 0
-      unitGraphics[id].x = rawX - next * x + centering
-      unitGraphics[id].y = rawY - next * y + centering
-      if (x !== 0) state.speed = 0.05
+      unitGraphics[id].x = rawX - state.nextStateFraction * x + centering
+      unitGraphics[id].y = rawY - state.nextStateFraction * y + centering
     }
   })
-  state.nextStateFraction = next
-  if (Math.floor(next) >= 1) {
+  if (state.nextStateFraction >= 1) {
     state.nextStateFraction = 0
-    //console.log(state.currentRound)
+    document.getElementById('round').innerHTML = currentRound
     // must be accessed through state
     state.currentRound += 1
   }
@@ -279,6 +278,7 @@ const rerenderUI = () => {
 
 const createObserver = async (rootElement) => {
   await readObserverLog()
+  document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
   createPixiApp()
   rerenderUI()
 
