@@ -176,12 +176,12 @@ const setEventListeners = () => {
         state.speed = Math.max(state.speed - SPEED_STEP, 0)
         break
       case ' ':
-        if (state.savedSpeed !== undefined) {
-          state.speed = state.savedSpeed
-          state.savedSpeed = undefined
-        } else {
+        if (state.speed > 0) {
           state.savedSpeed = state.speed
           state.speed = 0
+        } else {
+          if (state.speed === 0) state.speed = state.savedSpeed
+          state.savedSpeed = undefined
         }
         break
       default:
