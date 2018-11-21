@@ -24,6 +24,7 @@ const TILE_TEXTURES = {
 }
 
 const PLAYER_COLORS = [255, 16711680]
+const SPEED_STEP = 0.01
 
 const state = {
   // constants
@@ -160,6 +161,28 @@ const setEventListeners = () => {
       rerenderUI()
     }, 100)
   )
+  window.addEventListener('keydown', (e) => {
+    switch (e.key) {
+      case '+':
+        state.speed += SPEED_STEP
+        break
+      case '-':
+        state.speed = Math.max(state.speed - SPEED_STEP, 0)
+        console.log(state.speed)
+        break
+      case ' ':
+        if (state.savedSpeed !== undefined) {
+          state.speed = state.savedSpeed
+          state.savedSpeed = undefined
+        } else {
+          state.savedSpeed = state.speed
+          state.speed = 0
+        }
+        break
+      default:
+        break
+    }
+  })
 }
 
 const createPixiApp = () => {
@@ -185,8 +208,9 @@ const tick = (tickDelta) => {
       delta: false,
     }
   })
-  const next = state.nextStateFraction + tickDelta * speed
-  states[currentRound + Math.floor(next)].units.forEach((unit) => {
+  const next = Math.min(1, state.nextStateFraction + tickDelta * speed)
+  console.log(next, speed)
+  states[currentRound + 1].units.forEach((unit) => {
     diff[unit.id].x -= unit.x * cellSize
     diff[unit.id].y -= unit.y * cellSize
     diff[unit.id].delta = true
@@ -207,9 +231,9 @@ const tick = (tickDelta) => {
   state.nextStateFraction = next
   if (Math.floor(next) >= 1) {
     state.nextStateFraction = 0
-    console.log(state.currentRound)
+    //console.log(state.currentRound)
     // must be accessed through state
-    state.currentRound += Math.floor(next)
+    state.currentRound += 1
   }
 }
 
