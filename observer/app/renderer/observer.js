@@ -18,8 +18,8 @@ const UNIT_TYPES = {
 
 const TILE_TEXTURES = {
   [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
-  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest1.jpeg'),
-  [TILES.WATER]: PIXI.Texture.fromImage('../assets/water3.jpg'),
+  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest.jpg'),
+  [TILES.WATER]: PIXI.Texture.fromImage('../assets/water2.jpg'),
 }
 
 const PLAYER_COLORS = [255, 16711680]
