@@ -2,6 +2,7 @@ import {spawn} from 'child_process'
 import electron from 'electron'
 import browserSync from 'browser-sync'
 import browserSyncConnectUtils from 'browser-sync/dist/connect-utils'
+import path from 'path'
 
 const bsync = browserSync.create()
 
@@ -38,7 +39,7 @@ bsync.init(
     }
 
     // NOTE: hardcoded observer file
-    const child = spawn(electron, ['.', '../../observer.log'], {
+    const child = spawn(electron, ['.', path.join(__dirname, '../observer.log')], {
       env: {
         ...{
           NODE_ENV: 'development',

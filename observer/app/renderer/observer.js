@@ -1,7 +1,6 @@
 import * as PIXI from 'pixi.js'
 import electron from 'electron'
 import fs from 'fs'
-import path from 'path'
 import {debounce, forEach} from 'lodash'
 
 const MAX_CELL_SIZE = 100
@@ -50,13 +49,15 @@ const state = {
 
 const readObserverLog = () => {
   return new Promise((res, rej) => {
-    if (electron.remote.process.argv.length < 3) {
-      rej('Observer log file not specified!')
+    const args = electron.remote.process.argv
+    // NOTE: in development the observer file is specified as third argument
+    if (args.length < 2) {
+      const a = JSON.stringify(args)
+      rej(`${a}Observer log file not specified!`)
       return
     }
 
-    const file = path.join(__dirname, '.', electron.remote.process.argv[2])
-    fs.readFile(file, 'utf-8', (err, data) => {
+    fs.readFile(args[1] === '.' ? args[2] : args[1], 'utf-8', (err, data) => {
       if (err) {
         rej(`Error while reading observer log file: "${err.message}"`)
         return
@@ -277,16 +278,22 @@ const rerenderUI = () => {
 }
 
 const createObserver = async (rootElement) => {
-  await readObserverLog()
-  document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
-  createPixiApp()
-  rerenderUI()
+  try {
+    await readObserverLog()
+    document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
+    createPixiApp()
+    rerenderUI()
 
-  // game loop
-  state.pixiApp.ticker.add((delta) => {
-    tick(delta)
-  })
-  rootElement.appendChild(state.pixiApp.view)
+    // game loop
+    state.pixiApp.ticker.add((delta) => {
+      tick(delta)
+    })
+    rootElement.appendChild(state.pixiApp.view)
+  } catch (err) {
+    const errorElem = document.getElementById('error')
+    errorElem.innerHTML = err
+    errorElem.classList.add('visible')
+  }
 }
 
 export default createObserver

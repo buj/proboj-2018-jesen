@@ -26,7 +26,7 @@ body {
   margin: 0.3em;
 }
 
-.game-over-dialog {
+.dialog {
   position: fixed;
   top: 0;
   left: 0;
@@ -47,4 +47,9 @@ body {
 
 .margin-left {
   margin-left: 0.3em;
+}
+
+.error {
+  color: red;
+  font-size: 3em;
 }
