@@ -23,7 +23,7 @@ const TILE_TEXTURES = {
 }
 
 const PLAYER_COLORS = [255, 16711680]
-const SPEED_STEP = 0.005
+const SPEED_STEP = 0.05
 
 const state = {
   // constants
@@ -45,6 +45,14 @@ const state = {
   unitGraphics: {},
   pixiApp: null,
   unitsContainer: null,
+}
+
+const updateCellSize = () => {
+  state.cellSize = Math.min(
+    window.innerWidth / state.m,
+    window.innerHeight / state.n,
+    MAX_CELL_SIZE
+  )
 }
 
 const readObserverLog = () => {
@@ -125,11 +133,7 @@ const readObserverLog = () => {
         }
         state.states.push(st)
       }
-      state.cellSize = Math.min(
-        window.innerWidth / state.m,
-        window.innerHeight / state.n,
-        MAX_CELL_SIZE
-      )
+      updateCellSize()
       res()
     })
   })
@@ -151,6 +155,7 @@ const renderMapTiles = () => {
     }
   }
   pixiApp.renderer.resize(cellSize * n, cellSize * m)
+  terrainContainer.cacheAsBitmap = true
   pixiApp.stage.addChild(terrainContainer)
 }
 
@@ -187,10 +192,10 @@ const setEventListeners = () => {
 }
 
 const createPixiApp = () => {
-  electron.remote.getCurrentWindow().setContentSize(state.width, state.height)
   state.pixiApp = new PIXI.Application(state.width, state.height, {
     powerPreference: 'high-performance',
   })
+  state.pixiApp.stage.interactiveChildren = true
 }
 
 const tick = (tickDelta) => {
@@ -221,6 +226,7 @@ const tick = (tickDelta) => {
   forEach(diff, ({x, y, delta, rawX, rawY, type}, id) => {
     if (!delta) {
       state.unitsContainer.removeChild(unitGraphics[id])
+      unitGraphics[id].destroy()
       delete unitGraphics[id]
     } else {
       //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
@@ -235,14 +241,6 @@ const tick = (tickDelta) => {
     // must be accessed through state
     state.currentRound += 1
   }
-}
-
-const updateCellSize = () => {
-  state.cellSize = Math.min(
-    window.innerWidth / state.m,
-    window.innerHeight / state.n,
-    MAX_CELL_SIZE
-  )
 }
 
 const renderUnits = () => {
@@ -273,22 +271,22 @@ const rerenderUI = () => {
   state.pixiApp.stage.removeChildren()
   updateCellSize()
   renderMapTiles()
-  setEventListeners()
   renderUnits()
 }
 
 const createObserver = async (rootElement) => {
   try {
     await readObserverLog()
+    setEventListeners()
     document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
     createPixiApp()
     rerenderUI()
 
+    rootElement.appendChild(state.pixiApp.view)
     // game loop
     state.pixiApp.ticker.add((delta) => {
       tick(delta)
     })
-    rootElement.appendChild(state.pixiApp.view)
   } catch (err) {
     const errorElem = document.getElementById('error')
     errorElem.innerHTML = err
