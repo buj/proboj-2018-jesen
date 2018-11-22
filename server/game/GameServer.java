@@ -44,7 +44,7 @@ public class GameServer implements Runnable {
   
   @Override
   public void run () {
-    logger.info(String.format("GameServer: starting turn %d", game.getTurn()));
+    logger.info(String.format("starting turn %d", game.getTurn()));
     Duration turnTime = Duration.ofMillis(Constants.turnMillis); // duration of one turn
     Instant start = clock.instant(); // start of the turn
     
@@ -83,7 +83,7 @@ public class GameServer implements Runnable {
       
       // advance the game state, update histories
       game.advance();
-      logger.info(String.format("GameServer: starting turn %d", game.getTurn()));
+      logger.info(String.format("starting turn %d", game.getTurn()));
       for (int id = 1; id >= -1; id--) {
         List<String> source = sourceOf(id);
         synchronized (source) {
@@ -160,6 +160,21 @@ public class GameServer implements Runnable {
     }
   }
   
+  /** Returns the next game state for player <id>. */
+  public String getNext (int id) {
+    List<String> source = sourceOf(id);
+    synchronized (source) {
+      try {
+        source.wait();
+      }
+      catch (InterruptedException exc) {
+        logger.info(String.format("Interrupted during 'getNext', will return the current game state view immediately [%s]", exc.getMessage()));
+      }
+      int n = source.size();
+      return source.get(n-1);
+    }
+  }
+  
   /** Returns the entire history, from the point of view of player <id>.
    * Should only be called after the game concludes. */
   public String getHistory (int id) {
@@ -192,7 +207,7 @@ public class GameServer implements Runnable {
         cmdType = sc.next();
       }
       catch (NoSuchElementException exc) {
-        logger.info(String.format("GameServer: got empty message from client %d (id = %d)", client.hashCode(), client.id));
+        logger.info(String.format("got empty message from client %d (id = %d)", client.hashCode(), client.id));
         continue;
       }
       if (cmdType.equals("commands")) {
@@ -204,7 +219,7 @@ public class GameServer implements Runnable {
           desc = sc.nextLine();
         }
         catch (NoSuchElementException exc) {
-          logger.info(String.format("GameServer: got 'commands' but there is nothing further to clarify what command; from client %d (id = %d)", client.hashCode(), client.id));
+          logger.info(String.format("got 'commands' but there is nothing further to clarify what command; from client %d (id = %d)", client.hashCode(), client.id));
           continue;
         }
         commandsOf(client.id).add(desc);
@@ -220,11 +235,15 @@ public class GameServer implements Runnable {
           t = sc.nextInt();
         }
         catch (NoSuchElementException exc) {
-          logger.info(String.format("GameServer: got 'get' but then expected a turn number, got something else; from client %d (id = %d)", client.hashCode(), client.id));
+          logger.info(String.format("got 'get' but then expected a turn number, got something else; from client %d (id = %d)", client.hashCode(), client.id));
           continue;
         }
         String data = getAtTime(client.id, t);
         client.send(data);
+      }
+      else
+      if (cmdType.equals("next")) {
+        client.send(getNext(client.id));
       }
       else
       if (cmdType.equals("finish")) {

@@ -47,12 +47,12 @@ public class Server implements Runnable {
     // wait for two players, then start the game
     synchronized (lobby) {
       while (lobby.num_occupied() != 2) {
-        logger.info(String.format("Server: waiting for players to join...\n"));
+        logger.info(String.format("waiting for players to join..."));
         try {
           lobby.wait();
         }
         catch (InterruptedException exc) {
-          logger.info(String.format("Server: interrupted while waiting for players to join. Gonna quit"));
+          logger.info(String.format("interrupted while waiting for players to join. Gonna quit"));
           return;
         }
       }
@@ -64,7 +64,7 @@ public class Server implements Runnable {
       game_worker.join();
     }
     catch (InterruptedException exc) {
-      logger.info(String.format("Server: Interrupt while waiting for game server to die. Gonna die non-gracefully [%s]", exc.getMessage()));
+      logger.info(String.format("interrupt while waiting for game server to die. Gonna die non-gracefully [%s]", exc.getMessage()));
     }
     // create observation files
     String[] names = new String[]{"observer", "defender", "attacker"};
@@ -76,19 +76,23 @@ public class Server implements Runnable {
         fout.close();
       }
       catch (FileNotFoundException exc) {
-        logger.info(String.format("Server: cannot create observation file number %d [%s]", id, exc.getMessage()));
+        logger.info(String.format("cannot create observation file number %d [%s]", id, exc.getMessage()));
       }
     }
   }
   
   /** Runs a test game. */
   public static void main (String[] args) {
+    // set appropriate formatting
+    System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tT:%1$tL %2$s]%n%4$s: %5$s%6$s%n");
+    
+    // run the server
     Server server;
     try {
       server = new Server();
     }
     catch (IOException exc) {
-      logger.info(String.format("Server main: error while creating server, receptionist IOException, aborting. [%s]", exc.getMessage()));
+      logger.info(String.format("error while creating server, receptionist IOException, aborting. [%s]", exc.getMessage()));
       return;
     }
     server.run();
@@ -121,7 +125,7 @@ class Listener implements Runnable {
       }
     }
     catch (IOException exc) {
-      logger.info(String.format("Listener: IOException while running, ending. [%s]", exc.getMessage()));
+      logger.info(String.format("IOException while running, ending. [%s]", exc.getMessage()));
     }
   }
 }

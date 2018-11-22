@@ -27,7 +27,7 @@ public class Game {
   public Game (Random rng0, Terrain terrain0, List<InitialUnit> initial) {
     rng = rng0;
     terrain = terrain0;
-    visibility = new LinearVisibility(terrain, 3);
+    visibility = new LinearVisibility(terrain, Constants.sight);
     unitMap = new HashMap<Position, Unit>();
     score = 0;
     turn = 1;
@@ -169,7 +169,7 @@ public class Game {
           return;
         }
         int dist = pos.distTo(tgt);
-        if (dist > 2) {
+        if (dist > Constants.archer_range) {
           return;
         }
       }
@@ -517,7 +517,7 @@ public class Game {
     StringBuilder bui = new StringBuilder();
     bui.append(terrain.toString());
     bui.append("\n");
-    bui.append(Visibility.toString(terrain.r, terrain.c, visibility));
+    bui.append(visibility.toString());
     return bui.toString();
   }
 }

@@ -31,7 +31,7 @@ public class ClientProtocol implements Runnable {
       gserver.communicateWith(client);
     }
     catch (IOException exc) {
-      logger.info(String.format("ClientProtocol: IOException while communicating with client %d (id = %d) [%s], ending conversation", client.hashCode(), client.id, exc.getMessage()));
+      logger.info(String.format("IOException while communicating with client %d (id = %d) [%s], ending conversation", client.hashCode(), client.id, exc.getMessage()));
     }
     lobby.free(client.id);
   }

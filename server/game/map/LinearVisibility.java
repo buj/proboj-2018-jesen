@@ -7,57 +7,20 @@ import java.util.*;
  * calculate line of sight just like one would expect it to work in
  * the real world. This, however, leads to quite hard to understand
  * code and mechanics. */
-public class LinearVisibility implements Visibility {
-  protected Map<Position, Set<Position> > from, to;
-  
-  /** Constructs a linear visibility graph for the given Terrain and range. */
-  public LinearVisibility (Terrain map, int range) {
-    from = new HashMap<>();
-    to = new HashMap<>();
-    
-    // firstly, create lists for all positions
-    for (int i = 0; i < map.r; i++) {
-      for (int j = 0; j < map.c; j++) {
-        Position pos = new Position(i, j);
-        from.put(pos, new HashSet<Position>());
-        to.put(pos, new HashSet<Position>());
-      }
-    }
-    
-    // for each position
-    for (int i = 0; i < map.r; i++) {
-      for (int j = 0; j < map.c; j++) {
-        Position A = new Position(i, j);
-        
-        // try all positions in range
-        for (int di = -range; di <= range; di++) {
-          int lim = range - Math.abs(di);
-          for (int dj = -lim; dj <= lim; dj++) {
-            Position B = new Position(i + di, j + dj);
-            if (map.outOfBounds(B)) {
-              continue;
-            }
-            
-            // test: can we see? if so, extend the lists
-            if (!lineOfSight(between(A, B), map)) {
-              continue;
-            }
-            from.get(A).add(B);
-            to.get(B).add(A);
-          }
-        }
-      }
-    }
+public class LinearVisibility extends AbstractVisibility {
+  public LinearVisibility (Terrain map0, int range0) {
+    super(map0, range0);
   }
   
   @Override
-  public Set<Position> visibleFrom (Position pos) {
-    return from.get(pos);
-  }
-  
-  @Override
-  public Set<Position> canSee (Position pos) {
-    return to.get(pos);
+  protected boolean _canSee (Position A, Position B) {
+    if (map.outOfBounds(A) || map.outOfBounds(B)) {
+      return false;
+    }
+    if (!lineOfSight(between(A, B), map)) {
+      return false;
+    }
+    return true;
   }
   
   /** Compares values num1/denom1 and num2/denom2. Returns 1 if the

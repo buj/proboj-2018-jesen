@@ -19,6 +19,11 @@ public class InitialUnit {
     pos = pos0;
   }
   
+  @Override
+  public String toString () {
+    return String.format("%d %d %s", owner, type.ordinal(), pos.toString());
+  }
+  
   /** Loads and returns an InitialUnit from the provided Scanner. */
   public static InitialUnit loadFrom (Scanner sc) {
     int o = sc.nextInt();

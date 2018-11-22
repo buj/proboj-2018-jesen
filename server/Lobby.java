@@ -71,7 +71,7 @@ public class Lobby {
         cmd = sc.next();
       }
       catch (NoSuchElementException exc) {
-        logger.info(String.format("Lobby: got empty message from client %d (id = %d)", client.hashCode(), client.id));
+        logger.info(String.format("got empty message from client %d (id = %d)", client.hashCode(), client.id));
         continue;
       }
       if (cmd.equals("take")) {
@@ -80,7 +80,7 @@ public class Lobby {
           i = sc.nextInt();
         }
         catch (NoSuchElementException exc) {
-          logger.info(String.format("Lobby: got 'take' from %d, but what follows is not an int", client.hashCode()));
+          logger.info(String.format("got 'take' from %d, but what follows is not an int", client.hashCode()));
           continue;
         }
         if (take(i)) {

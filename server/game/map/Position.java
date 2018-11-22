@@ -34,6 +34,13 @@ public class Position {
     return Math.abs(tgt.r - r) + Math.abs(tgt.c - c);
   }
   
+  public Position plus (Position other) {
+    return new Position(r + other.r, c + other.c);
+  }
+  public Position minus (Position other) {
+    return new Position(r - other.r, c - other.c);
+  }
+  
   @Override
   public boolean equals (Object other) {
     if (other instanceof Position) {
