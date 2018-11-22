@@ -3,6 +3,7 @@ package server.game;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.logging.*;
 import java.time.*;
 import server.communication.Client;
 import server.game.logic.Game;
@@ -11,6 +12,8 @@ import server.game.logic.Game;
 /** A runnable that runs the game and has methods that clients can
  * use to communicate with the game (set commands, ...). */
 public class GameServer implements Runnable {
+  protected static Logger logger = Logger.getLogger("Game");
+  
   protected Clock clock;
   
   protected Game game;
@@ -41,7 +44,7 @@ public class GameServer implements Runnable {
   
   @Override
   public void run () {
-    System.err.format("GameServer: starting turn %d\n", game.getTurn());
+    logger.info(String.format("GameServer: starting turn %d", game.getTurn()));
     Duration turnTime = Duration.ofMillis(Constants.turnMillis); // duration of one turn
     Instant start = clock.instant(); // start of the turn
     
@@ -61,7 +64,7 @@ public class GameServer implements Runnable {
           Thread.sleep(1000 * duration.getSeconds() + ms, ns);
         }
         catch (InterruptedException exc) {
-          System.err.format("Tried to interrupt game server... but it just ignores the interrupt. [%s]\n", exc.getMessage());
+          logger.info(String.format("Tried to interrupt game server... but it just ignores the interrupt. [%s]", exc.getMessage()));
         }
       }
       start = clock.instant();
@@ -80,7 +83,7 @@ public class GameServer implements Runnable {
       
       // advance the game state, update histories
       game.advance();
-      System.err.format("GameServer: starting turn %d\n", game.getTurn());
+      logger.info(String.format("GameServer: starting turn %d", game.getTurn()));
       for (int id = 1; id >= -1; id--) {
         List<String> source = sourceOf(id);
         synchronized (source) {
@@ -149,7 +152,7 @@ public class GameServer implements Runnable {
           source.wait();
         }
         catch (InterruptedException exc) {
-          System.err.format("Interrupt during 'getAtTime' of gameServer... but it is ignored [%s]\n", exc.getMessage());
+          logger.info(String.format("Interrupt during 'getAtTime' of gameServer... but it is ignored [%s]", exc.getMessage()));
         }
       }
       int n = source.size();
@@ -189,22 +192,22 @@ public class GameServer implements Runnable {
         cmdType = sc.next();
       }
       catch (NoSuchElementException exc) {
-        System.err.format("GameServer: got empty message from client %d (id = %d)\n", client.hashCode(), client.id);
+        logger.info(String.format("GameServer: got empty message from client %d (id = %d)", client.hashCode(), client.id));
         continue;
       }
-      if (cmdType.equals("command")) {
+      if (cmdType.equals("commands")) {
         if (client.id != Constants.attacker && client.id != Constants.defender) { // only real players may act!
           continue;
         }
-        String cmd;
+        String desc;
         try {
-          cmd = sc.nextLine();
+          desc = sc.nextLine();
         }
         catch (NoSuchElementException exc) {
-          System.err.format("GameServer: got 'command' but there is nothing further to clarify what command; from client %d (id = %d)\n", client.hashCode(), client.id);
+          logger.info(String.format("GameServer: got 'commands' but there is nothing further to clarify what command; from client %d (id = %d)", client.hashCode(), client.id));
           continue;
         }
-        commandsOf(client.id).add(cmd);
+        commandsOf(client.id).add(desc);
       }
       else
       if (cmdType.equals("intro")) {
@@ -217,7 +220,7 @@ public class GameServer implements Runnable {
           t = sc.nextInt();
         }
         catch (NoSuchElementException exc) {
-          System.err.format("GameServer: got 'get' but then expected a turn number, got something else; from client %d (id = %d)\n", client.hashCode(), client.id);
+          logger.info(String.format("GameServer: got 'get' but then expected a turn number, got something else; from client %d (id = %d)", client.hashCode(), client.id));
           continue;
         }
         String data = getAtTime(client.id, t);

@@ -3,6 +3,7 @@ package server;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.logging.*;
 import server.communication.*;
 import server.game.logic.Game;
 import server.game.map.*;
@@ -12,23 +13,27 @@ import server.game.*;
 
 /** Runs it all. */
 public class Server implements Runnable {
+  protected static Logger logger = Logger.getLogger("Server");
+  
   protected Random rng;
+  protected Receptionist receptionist;
+  protected Lobby lobby;
   protected Listener listener;
   protected GameServer gserver;
   
   /** Creates a test game. */
   public Server () throws IOException {
-    Receptionist receptionist = new Receptionist(new InetSocketAddress("127.0.0.1", 4247));
-    Lobby lobby = new Lobby();
+    receptionist = new Receptionist(new InetSocketAddress("127.0.0.1", 4247));
+    lobby = new Lobby();
     
     // creates the game
     rng = new Random(1023456789);
-    Terrain terra = Terrain.mildRandom(rng, 10, 10);
+    Terrain terra = Terrain.mildRandom(rng, 100, 100);
     List<InitialUnit> initial = InitialUnit.dummyStartingPositions(terra);
     Game game = new Game(rng, terra, initial);
     gserver = new GameServer(game);
     
-    // creates the listener
+    // creates the thing that listens for clients
     listener = new Listener(receptionist, lobby, gserver);
   }
   
@@ -39,7 +44,19 @@ public class Server implements Runnable {
     lobby_worker.setDaemon(true);
     lobby_worker.start();
     
-    // start the game
+    // wait for two players, then start the game
+    synchronized (lobby) {
+      while (lobby.num_occupied() != 2) {
+        logger.info(String.format("Server: waiting for players to join...\n"));
+        try {
+          lobby.wait();
+        }
+        catch (InterruptedException exc) {
+          logger.info(String.format("Server: interrupted while waiting for players to join. Gonna quit"));
+          return;
+        }
+      }
+    }
     Thread game_worker = new Thread(gserver);
     game_worker.start();
     
@@ -47,7 +64,7 @@ public class Server implements Runnable {
       game_worker.join();
     }
     catch (InterruptedException exc) {
-      System.err.format("Server: Interrupt while waiting for game server to die. Gonna die non-gracefully [%s]\n", exc.getMessage());
+      logger.info(String.format("Server: Interrupt while waiting for game server to die. Gonna die non-gracefully [%s]", exc.getMessage()));
     }
     // create observation files
     String[] names = new String[]{"observer", "defender", "attacker"};
@@ -59,7 +76,7 @@ public class Server implements Runnable {
         fout.close();
       }
       catch (FileNotFoundException exc) {
-        System.err.format("Server: cannot create observation file number %d [%s]\n", id, exc.getMessage());
+        logger.info(String.format("Server: cannot create observation file number %d [%s]", id, exc.getMessage()));
       }
     }
   }
@@ -71,7 +88,7 @@ public class Server implements Runnable {
       server = new Server();
     }
     catch (IOException exc) {
-      System.err.format("Server main: error while creating server, receptionist IOException, aborting. [%s]\n", exc.getMessage());
+      logger.info(String.format("Server main: error while creating server, receptionist IOException, aborting. [%s]", exc.getMessage()));
       return;
     }
     server.run();
@@ -81,6 +98,8 @@ public class Server implements Runnable {
 
 /** Listens for connections. */
 class Listener implements Runnable {
+  protected static Logger logger = Logger.getLogger("Server");
+  
   protected Receptionist receptionist;
   protected Lobby lobby;
   protected GameServer gserver;
@@ -102,7 +121,7 @@ class Listener implements Runnable {
       }
     }
     catch (IOException exc) {
-      System.err.format("Listener: IOException while running, ending. [%s]\n", exc.getMessage());
+      logger.info(String.format("Listener: IOException while running, ending. [%s]", exc.getMessage()));
     }
   }
 }

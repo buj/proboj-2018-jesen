@@ -1,6 +1,7 @@
 package server.game.logic;
 
 import java.util.*;
+import java.util.logging.*;
 import server.game.map.*;
 import server.game.units.*;
 import server.game.Constants;
@@ -9,6 +10,8 @@ import server.game.Constants;
 /** Simulates game logic: moves, attacks, deaths, ... taking into account
  * information about visibility and terrain. */
 public class Game {
+  protected static Logger logger = Logger.getLogger("Game");
+  
   protected Random rng;
   
   protected Terrain terrain;
@@ -418,15 +421,25 @@ public class Game {
     if (player != Constants.attacker && player != Constants.defender) {
       return;
     }
-    Command cmd;
+    Scanner sc = new Scanner(str);
+    int count;
     try {
-      cmd = Command.loadFrom(str);
+      count = sc.nextInt();
     }
-    catch (NoSuchElementException | IndexOutOfBoundsException exc) {
-      System.err.println(String.format("Error while parsing command '%s': %s\n", str, exc.getMessage()));
+    catch (NoSuchElementException exc) {
+      logger.info(String.format("Error while parsing commands from client %d, no count", player));
       return;
     }
-    stepper.command(player, cmd);
+    try {
+      for (int i = 0; i < count; i++) {
+        Command cmd = Command.loadFrom(sc);
+        stepper.command(player, cmd);
+      }
+    }
+    catch (NoSuchElementException | IndexOutOfBoundsException exc) {
+      logger.info(String.format("Error while parsing commands from player %d", player));
+      return;
+    }
   }
   
   /** Returns true if the game is over: either time has run out, or

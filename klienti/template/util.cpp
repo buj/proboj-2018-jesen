@@ -2,22 +2,8 @@
 
 #include <iostream>
 #include <random>
-#include <chrono>
 using namespace std;
 
-
-auto timeAtStart = chrono::system_clock::now();
-
-/** Vrati pocet sekund odkedy bol nas program spusteny. */
-double getFromStart () {
-  auto now = chrono::system_clock::now();
-  chrono::duration<double> diff = now - timeAtStart;
-  return diff.count();
-}
-
-void timeStamp () {
-  cerr << "[" << getFromStart() << "s]\n";
-}
 
 /** Definujeme si prijemne logovanie. Cislo na zaciatku hovori, ze chceme
  * mat spravu odsadenu <lv> medzerami. */

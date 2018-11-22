@@ -1,6 +1,7 @@
 package server;
 
 import java.io.*;
+import java.util.logging.*;
 import server.communication.Client;
 import server.game.GameServer;
 
@@ -9,6 +10,8 @@ import server.game.GameServer;
  * communication with game server, into a single protocol. Should be
  * carried out asynchronously by a new thread. */
 public class ClientProtocol implements Runnable {
+  protected static Logger logger = Logger.getLogger("Server");
+  
   protected Client client;
   protected Lobby lobby;
   protected GameServer gserver;
@@ -28,7 +31,7 @@ public class ClientProtocol implements Runnable {
       gserver.communicateWith(client);
     }
     catch (IOException exc) {
-      System.err.format("ClientProtocol: IOException while communicating with client %d (id = %d) [%s], ending conversation\n", client.hashCode(), client.id, exc.getMessage());
+      logger.info(String.format("ClientProtocol: IOException while communicating with client %d (id = %d) [%s], ending conversation", client.hashCode(), client.id, exc.getMessage()));
     }
     lobby.free(client.id);
   }

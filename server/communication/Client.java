@@ -3,12 +3,15 @@ package server.communication;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.logging.*;
 
 
 /** Can send and receive messages from the otherside. Also, we can set
  * and retrieve its player ID, which is done in the lobby. This
  * parameter is later used in the game. */
 public class Client {
+  protected static Logger logger = Logger.getLogger("Server");
+  
   public int id;
   
   protected Socket socket;
@@ -47,7 +50,7 @@ public class Client {
       socket.close();
     }
     catch (IOException exc) {
-      System.err.println(String.format("%d: IOException while closing socket, during client death [%s]", id, exc.getMessage()));
+      logger.info(String.format("%d: IOException while closing socket, during client death [%s]", id, exc.getMessage()));
     }
   }
 }

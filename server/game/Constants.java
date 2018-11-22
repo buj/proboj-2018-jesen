@@ -16,6 +16,6 @@ public class Constants {
   public static final int staminaRegen = 50;
   public static final int boostedStaminaRegen = 100;
   
-  public static final int maxTurns = 10000;
+  public static final int maxTurns = 2000;
   public static final int turnMillis = 10;
 }

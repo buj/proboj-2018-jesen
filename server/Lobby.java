@@ -1,14 +1,17 @@
 package server;
 
-import server.communication.*;
 import java.io.*;
 import java.util.*;
+import java.util.logging.*;
+import server.communication.*;
 
 
 /** Prior to the game's start, all clients are located in the lobby.
  * There are a limited number of player seats (id = 0, 1), but unlimited
  * number of do-nothing seats (id = -1). */
 public class Lobby {
+  protected static Logger logger = Logger.getLogger("Server");
+  
   protected boolean[] occupied;
   
   /** Initial empty lobby. */
@@ -29,6 +32,7 @@ public class Lobby {
       synchronized (this) {
         if (!occupied[i]) {
           occupied[i] = true;
+          notifyAll();
           return true;
         }
       }
@@ -41,8 +45,20 @@ public class Lobby {
     if (is_exclusive(i)) {
       synchronized (this) {
         occupied[i] = false;
+        notifyAll();
       }
     }
+  }
+  
+  /** Returns the number of occupied seats. */
+  int num_occupied () {
+    int res = 0;
+    synchronized (this) {
+      for (int i = 0; i < 2; i++) {
+        res += (occupied[i] ? 1 : 0);
+      }
+    }
+    return res;
   }
   
   /** Starts a conversation with the provided client regarding his seat.
@@ -55,7 +71,7 @@ public class Lobby {
         cmd = sc.next();
       }
       catch (NoSuchElementException exc) {
-        System.err.format("Lobby: got empty message from client %d (id = %d)\n", client.hashCode(), client.id);
+        logger.info(String.format("Lobby: got empty message from client %d (id = %d)", client.hashCode(), client.id));
         continue;
       }
       if (cmd.equals("take")) {
@@ -64,7 +80,7 @@ public class Lobby {
           i = sc.nextInt();
         }
         catch (NoSuchElementException exc) {
-          System.err.format("Lobby: got 'take' from %d, but what follows is not an int\n", client.hashCode());
+          logger.info(String.format("Lobby: got 'take' from %d, but what follows is not an int", client.hashCode()));
           continue;
         }
         if (take(i)) {
