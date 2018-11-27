@@ -18,8 +18,19 @@ const UNIT_TYPES = {
 
 const TILE_TEXTURES = {
   [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
-  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest.jpg'),
+  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest2.jpeg'),
   [TILES.WATER]: PIXI.Texture.fromImage('../assets/water2.jpg'),
+}
+
+const UNIT_TEXTURES = {
+  [UNIT_TYPES.WARRIOR]: [
+    PIXI.Texture.fromImage('../assets/blue_sword.png'),
+    PIXI.Texture.fromImage('../assets/red_sword.png'),
+  ],
+  [UNIT_TYPES.ARCHER]: [
+    PIXI.Texture.fromImage('../assets/blue_bow.png'),
+    PIXI.Texture.fromImage('../assets/red_bow.png'),
+  ],
 }
 
 const PLAYER_COLORS = [255, 16711680]
@@ -144,9 +155,11 @@ const renderMapTiles = () => {
   const terrainContainer = new PIXI.Container()
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      const tile = new PIXI.extras.TilingSprite(TILE_TEXTURES[terrain[i][j]], cellSize, cellSize)
+      const texture = TILE_TEXTURES[terrain[i][j]]
+      const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
+      tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
       const mask = new PIXI.Graphics()
-      mask.beginFill(0, heights[i][j] / 10)
+      mask.beginFill(0, heights[i][j] / 5)
       mask.drawRect(0, 0, cellSize, cellSize)
       tile.x = mask.x = cellSize * i
       tile.y = mask.y = cellSize * j
@@ -224,15 +237,14 @@ const tick = (tickDelta) => {
   })
 
   forEach(diff, ({x, y, delta, rawX, rawY, type}, id) => {
-    if (!delta) {
+    if (!delta && state.nextStateFraction >= 1) {
       state.unitsContainer.removeChild(unitGraphics[id])
       unitGraphics[id].destroy()
       delete unitGraphics[id]
     } else {
       //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
-      const centering = type === UNIT_TYPES.ARCHER ? cellSize / 6 : 0
-      unitGraphics[id].x = rawX - state.nextStateFraction * x + centering
-      unitGraphics[id].y = rawY - state.nextStateFraction * y + centering
+      unitGraphics[id].x = rawX - state.nextStateFraction * x
+      unitGraphics[id].y = rawY - state.nextStateFraction * y
     }
   })
   if (state.nextStateFraction >= 1) {
@@ -249,20 +261,13 @@ const renderUnits = () => {
   state.unitGraphics = {}
 
   states[currentRound].units.forEach((unit) => {
-    const g = new PIXI.Graphics()
-    g.beginFill(PLAYER_COLORS[unit.owner])
-    if (unit.type === UNIT_TYPES.WARRIOR) {
-      g.drawCircle(cellSize / 2, cellSize / 2, cellSize / 3)
-      g.x = cellSize * unit.x
-      g.y = cellSize * unit.y
-    } else {
-      g.drawRect(0, 0, (cellSize * 2) / 3, (cellSize * 2) / 3)
-      const free = cellSize / 3
-      g.x = cellSize * unit.x + free / 2
-      g.y = cellSize * unit.y + free / 2
-    }
-    state.unitGraphics[unit.id] = g
-    state.unitsContainer.addChild(g)
+    const texture = UNIT_TEXTURES[unit.type][unit.owner]
+    const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
+    tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
+    tile.x = cellSize * unit.x
+    tile.y = cellSize * unit.y
+    state.unitGraphics[unit.id] = tile
+    state.unitsContainer.addChild(tile)
   })
   pixiApp.stage.addChild(state.unitsContainer)
 }
