@@ -42,11 +42,10 @@ const UNIT_TEXTURES = {
 const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
 
 const SPEED_STEP = 0.05
+const ZOOM_DELTA = 0.05
 
 const state = {
-  // constants
-  width: 1000,
-  height: 700,
+  zoom: 1,
   // these are loaded from observer log file
   mapType: null,
   n: null,
@@ -71,6 +70,18 @@ const updateCellSize = () => {
     window.innerHeight / state.n,
     MAX_CELL_SIZE
   )
+}
+
+const updateRendererSize = () => {
+  const {pixiApp, cellSize, n, m, zoom} = state
+  pixiApp.renderer.resize(cellSize * n * zoom, cellSize * m * zoom)
+}
+
+const updateZoom = (delta) => {
+  state.zoom = Math.max(0, state.zoom + delta)
+  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
+  updateRendererSize()
+  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
 }
 
 const readObserverLog = () => {
@@ -176,7 +187,6 @@ const renderMapTiles = () => {
       terrainContainer.addChild(mask)
     }
   }
-  pixiApp.renderer.resize(cellSize * n, cellSize * m)
   terrainContainer.cacheAsBitmap = true
   pixiApp.stage.addChild(terrainContainer)
 }
@@ -215,6 +225,12 @@ const setEventListeners = () => {
       case '2':
         state.mapType = MODE.PLAYER2
         break
+      case '4':
+        updateZoom(ZOOM_DELTA)
+        break
+      case '5':
+        updateZoom(-ZOOM_DELTA)
+        break
       default:
         break
     }
@@ -223,7 +239,8 @@ const setEventListeners = () => {
 }
 
 const createPixiApp = () => {
-  state.pixiApp = new PIXI.Application(state.width, state.height, {
+  // TODO: use maximum allowed size
+  state.pixiApp = new PIXI.Application(1000, 600, {
     powerPreference: 'high-performance',
   })
   state.pixiApp.stage.interactiveChildren = true
@@ -334,6 +351,7 @@ const renderUnits = () => {
 const rerenderUI = () => {
   state.pixiApp.stage.removeChildren()
   updateCellSize()
+  updateZoom(0)
   renderMapTiles()
   renderUnits()
   renderFogOfWar()
