@@ -3,7 +3,13 @@ import electron from 'electron'
 import fs from 'fs'
 import {debounce, forEach} from 'lodash'
 
-const MAX_CELL_SIZE = 100
+const MAX_CELL_SIZE = 500
+
+const MODE = {
+  OBSERVER: -1,
+  PLAYER1: 0,
+  PLAYER2: 1,
+}
 
 const TILES = {
   PLAIN: 0,
@@ -33,7 +39,8 @@ const UNIT_TEXTURES = {
   ],
 }
 
-const PLAYER_COLORS = [255, 16711680]
+const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
+
 const SPEED_STEP = 0.05
 
 const state = {
@@ -144,6 +151,8 @@ const readObserverLog = () => {
         }
         state.states.push(st)
       }
+
+      // other initialization
       updateCellSize()
       res()
     })
@@ -197,6 +206,15 @@ const setEventListeners = () => {
           state.savedSpeed = undefined
         }
         break
+      case '0':
+        state.mapType = MODE.OBSERVER
+        break
+      case '1':
+        state.mapType = MODE.PLAYER1
+        break
+      case '2':
+        state.mapType = MODE.PLAYER2
+        break
       default:
         break
     }
@@ -209,6 +227,46 @@ const createPixiApp = () => {
     powerPreference: 'high-performance',
   })
   state.pixiApp.stage.interactiveChildren = true
+}
+
+const renderFogOfWar = () => {
+  const {currentRound, states, cellSize, pixiApp, mapType, n, m, visibility} = state
+  if (state.fogContainer) {
+    state.fogContainer.destroy()
+    delete state.fogContainer
+  }
+  if (mapType === MODE.OBSERVER) return
+  state.fogContainer = new PIXI.Container()
+
+  const isFog = []
+  for (let i = 0; i < n; i++) {
+    const row = []
+    for (let j = 0; j < m; j++) {
+      row.push(true)
+    }
+    isFog.push(row)
+  }
+
+  states[currentRound].units.forEach((unit) => {
+    if (unit.owner === state.mapType) {
+      visibility[unit.x][unit.y].forEach((cell) => {
+        isFog[cell[0]][cell[1]] = false
+      })
+    }
+  })
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      if (!isFog[i][j]) continue
+      const tile = new PIXI.extras.TilingSprite(FOG_TEXTURE, cellSize, cellSize)
+      tile.tileScale = new PIXI.Point(cellSize / FOG_TEXTURE.width, cellSize / FOG_TEXTURE.height)
+      tile.x = cellSize * i
+      tile.y = cellSize * j
+      state.fogContainer.addChild(tile)
+    }
+  }
+
+  pixiApp.stage.addChild(state.fogContainer)
 }
 
 const tick = (tickDelta) => {
@@ -253,6 +311,7 @@ const tick = (tickDelta) => {
     // must be accessed through state
     state.currentRound += 1
   }
+  renderFogOfWar()
 }
 
 const renderUnits = () => {
@@ -277,6 +336,7 @@ const rerenderUI = () => {
   updateCellSize()
   renderMapTiles()
   renderUnits()
+  renderFogOfWar()
 }
 
 const createObserver = async (rootElement) => {
