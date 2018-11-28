@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js'
 import electron from 'electron'
 import fs from 'fs'
 import {debounce, forEach} from 'lodash'
+import {transposeState} from './transpose'
 
 const MAX_CELL_SIZE = 500
 
@@ -23,8 +24,8 @@ const UNIT_TYPES = {
 }
 
 const TILE_TEXTURES = {
-  [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
-  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest2.jpeg'),
+  [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/snow2.jpeg'),
+  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest3.jpg'),
   [TILES.WATER]: PIXI.Texture.fromImage('../assets/water2.jpg'),
 }
 
@@ -40,12 +41,13 @@ const UNIT_TEXTURES = {
 }
 
 const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
+const WALL_TEXTURE = PIXI.Texture.fromImage('../assets/ice_wall.jpg')
 
 const SPEED_STEP = 0.05
 const ZOOM_DELTA = 0.05
 const CAMERA_MOVE_DELTA = 50
 
-const state = {
+let state = {
   zoom: 1,
   stageOffset: {
     x: 0,
@@ -71,8 +73,8 @@ const state = {
 
 const updateCellSize = () => {
   state.cellSize = Math.min(
-    window.innerWidth / state.m,
-    window.innerHeight / state.n,
+    window.innerWidth / state.n,
+    window.innerHeight / state.m,
     MAX_CELL_SIZE
   )
 }
@@ -152,7 +154,9 @@ const readObserverLog = () => {
           const seeCount = tokens[pos++]
           const vis = []
           for (let k = 0; k < seeCount; k++) {
-            vis.push([tokens[pos++], tokens[pos++]])
+            const x = tokens[pos++]
+            // NOTE: so we don't have to tranpose later
+            vis.push([tokens[pos++], x])
           }
           row.push(vis)
         }
@@ -183,6 +187,8 @@ const readObserverLog = () => {
       }
 
       // other initialization
+      state.n += 1
+      state = transposeState(state)
       updateCellSize()
       res()
     })
@@ -194,16 +200,20 @@ const renderMapTiles = () => {
   const terrainContainer = new PIXI.Container()
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      const texture = TILE_TEXTURES[terrain[i][j]]
+      const texture = j === m - 1 ? WALL_TEXTURE : TILE_TEXTURES[terrain[i][j]]
       const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
       tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
-      const mask = new PIXI.Graphics()
-      mask.beginFill(0, heights[i][j] / 5)
-      mask.drawRect(0, 0, cellSize, cellSize)
-      tile.x = mask.x = cellSize * i
-      tile.y = mask.y = cellSize * j
+      tile.x = cellSize * i
+      tile.y = cellSize * j
       terrainContainer.addChild(tile)
-      terrainContainer.addChild(mask)
+      if (j !== m - 1) {
+        const mask = new PIXI.Graphics()
+        mask.x = cellSize * i
+        mask.y = cellSize * j
+        mask.beginFill(0, heights[i][j] / 5)
+        mask.drawRect(0, 0, cellSize, cellSize)
+        terrainContainer.addChild(mask)
+      }
     }
   }
   terrainContainer.cacheAsBitmap = true
@@ -348,7 +358,6 @@ const tick = (tickDelta) => {
       unitGraphics[id].destroy()
       delete unitGraphics[id]
     } else {
-      //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
       unitGraphics[id].x = rawX - state.nextStateFraction * x
       unitGraphics[id].y = rawY - state.nextStateFraction * y
     }
