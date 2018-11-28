@@ -43,9 +43,14 @@ const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
 
 const SPEED_STEP = 0.05
 const ZOOM_DELTA = 0.05
+const CAMERA_MOVE_DELTA = 50
 
 const state = {
   zoom: 1,
+  stageOffset: {
+    x: 0,
+    y: 0,
+  },
   // these are loaded from observer log file
   mapType: null,
   n: null,
@@ -73,15 +78,29 @@ const updateCellSize = () => {
 }
 
 const updateRendererSize = () => {
-  const {pixiApp, cellSize, n, m, zoom} = state
-  pixiApp.renderer.resize(cellSize * n * zoom, cellSize * m * zoom)
+  const {pixiApp, cellSize, n, m, zoom, stageOffset} = state
+  pixiApp.renderer.resize(cellSize * n * zoom + stageOffset.x, cellSize * m * zoom + stageOffset.y)
 }
 
 const updateZoom = (delta) => {
   state.zoom = Math.max(0, state.zoom + delta)
   state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
-  updateRendererSize()
   document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
+  updateRendererSize()
+}
+
+const updateStageCenter = (xDelta, yDelta) => {
+  const {cellSize, n, m, zoom, stageOffset} = state
+  if (state.stageOffset.x + xDelta > 0 || state.stageOffset.y + yDelta > 0) return
+  const hiddenWidth = cellSize * m * zoom - window.innerWidth
+  const hiddenHeight = cellSize * n * zoom - window.innerHeight
+  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) return
+  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) return
+  state.stageOffset.x += xDelta
+  state.stageOffset.y += yDelta
+  state.pixiApp.stage.x += xDelta
+  state.pixiApp.stage.y += yDelta
+  updateRendererSize()
 }
 
 const readObserverLog = () => {
@@ -230,6 +249,18 @@ const setEventListeners = () => {
         break
       case '5':
         updateZoom(-ZOOM_DELTA)
+        break
+      case 'ArrowLeft':
+        updateStageCenter(CAMERA_MOVE_DELTA, 0)
+        break
+      case 'ArrowRight':
+        updateStageCenter(-CAMERA_MOVE_DELTA, 0)
+        break
+      case 'ArrowUp':
+        updateStageCenter(0, CAMERA_MOVE_DELTA)
+        break
+      case 'ArrowDown':
+        updateStageCenter(0, -CAMERA_MOVE_DELTA)
         break
       default:
         break
