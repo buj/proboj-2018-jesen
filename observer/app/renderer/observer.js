@@ -71,6 +71,14 @@ let state = {
   unitsContainer: null,
 }
 
+const getHiddenHeight = () => {
+  return Math.max(0, state.cellSize * state.m * state.zoom - window.innerHeight)
+}
+
+const getHiddenWidth = () => {
+  return Math.max(0, state.cellSize * state.n * state.zoom - window.innerWidth)
+}
+
 const updateCellSize = () => {
   state.cellSize = Math.min(
     window.innerWidth / state.n,
@@ -80,29 +88,42 @@ const updateCellSize = () => {
 }
 
 const updateRendererSize = () => {
-  const {pixiApp, cellSize, n, m, zoom, stageOffset} = state
-  pixiApp.renderer.resize(cellSize * n * zoom + stageOffset.x, cellSize * m * zoom + stageOffset.y)
-}
-
-const updateZoom = (delta) => {
-  state.zoom = Math.max(0, state.zoom + delta)
-  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
-  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
-  updateRendererSize()
+  state.pixiApp.renderer.resize(window.innerWidth, window.innerHeight)
 }
 
 const updateStageCenter = (xDelta, yDelta) => {
   const {cellSize, n, m, zoom, stageOffset} = state
-  if (state.stageOffset.x + xDelta > 0 || state.stageOffset.y + yDelta > 0) return
-  const hiddenWidth = cellSize * m * zoom - window.innerWidth
-  const hiddenHeight = cellSize * n * zoom - window.innerHeight
-  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) return
-  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) return
+  if (state.stageOffset.x + xDelta > 0) xDelta = -stageOffset.x
+  if (state.stageOffset.y + yDelta > 0) yDelta = -stageOffset.y
+  const hiddenWidth = getHiddenWidth()
+  const hiddenHeight = getHiddenHeight()
+  console.log(hiddenHeight, -(stageOffset.y + yDelta), hiddenWidth, -(stageOffset.x + xDelta))
+  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) xDelta = -(hiddenWidth + stageOffset.x)
+  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) {
+    yDelta = -(hiddenHeight + stageOffset.y)
+  }
   state.stageOffset.x += xDelta
   state.stageOffset.y += yDelta
   state.pixiApp.stage.x += xDelta
   state.pixiApp.stage.y += yDelta
   updateRendererSize()
+}
+
+const updateZoom = (delta) => {
+  state.zoom = Math.max(0, state.zoom + delta)
+  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
+  const hiddenWidth = getHiddenWidth()
+  const hiddenHeight = getHiddenHeight()
+  console.log(
+    hiddenWidth,
+    window.innerWidth - state.cellSize * state.n,
+    hiddenHeight,
+    window.innerHeight - state.cellSize * state.m,
+    state.stageOffset
+  )
+  if (delta < 0) updateStageCenter(Math.max(-hiddenWidth, state.stageOffset.x), Math.max(-hiddenHeight, state.stageOffset.y))
+  updateRendererSize()
+  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
 }
 
 const readObserverLog = () => {
@@ -283,6 +304,7 @@ const createPixiApp = () => {
   // TODO: use maximum allowed size
   state.pixiApp = new PIXI.Application(1000, 600, {
     powerPreference: 'high-performance',
+    backgroundColor: 4915330,
   })
   state.pixiApp.stage.interactiveChildren = true
 }
@@ -315,7 +337,7 @@ const renderFogOfWar = () => {
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      if (!isFog[i][j]) continue
+      if (j === m-1 || !isFog[i][j]) continue
       const tile = new PIXI.extras.TilingSprite(FOG_TEXTURE, cellSize, cellSize)
       tile.tileScale = new PIXI.Point(cellSize / FOG_TEXTURE.width, cellSize / FOG_TEXTURE.height)
       tile.x = cellSize * i
