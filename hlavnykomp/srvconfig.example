@@ -1,0 +1,11 @@
+
+klienti=( v a b c d )
+mapy=( mapy/*.ppm )
+nazvy=(
+  'Vedúci'
+  'A'
+  'B'
+  'C'
+  'D'
+)
+

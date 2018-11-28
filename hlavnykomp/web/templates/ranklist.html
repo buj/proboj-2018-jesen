@@ -1,0 +1,12 @@
+<h2>Výsledkovka</h2>
+<table style="font-size: 200%">
+<tbody>
+{% for rank, id in ranklist %}
+  <tr>
+    <td style="font-weight: bold;">{{ loop.index }}.</td>
+    <td style="padding-right: .5em;">{{ usertitles[id] }}</td>
+    <td>{{ rank }}</td>
+  </tr>
+{% endfor %}
+</tbody>
+</table>

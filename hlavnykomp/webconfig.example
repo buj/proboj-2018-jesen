@@ -1,0 +1,13 @@
+# -*- coding: utf8 -*-
+
+DRUZINKY = [
+  ('v', u'Vedúci', b'8bd8bc620cc4b32e6552c4369766c8a5e67c1158'),
+  ('a', u'A', b'd9d05a60431b9728c028710a9b9d9871bbd1943f'),
+  ('b', u'B', b'6412d834e3a427d7218be690f3bf5811b9d058dc'),
+  ('c', u'C', b'c694a93c582f8f6d4109af6c177b61b3b06ca4d7'),
+  ('d', u'D', b'32b2264c5f4a5911a66e06e09ee7b90fad6e271f'),
+]
+
+GIT = ''
+
+SECRET_KEY = 'blablablablabla'

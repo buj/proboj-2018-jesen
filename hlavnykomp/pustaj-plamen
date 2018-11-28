@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+cd "`dirname "$0"`"/..
+root=$PWD
+
+# plamen: server-side build system (wink wink)
+
+runmake () {
+  echo make "$@"
+  make "$@"
+}
+
+[ "$1" == "-f" ] && force=true
+
+while true; do
+  source ./hlavnykomp/srvconfig
+
+  for klient in "${klienti[@]}"; do
+    najnovsi=`ls hlavnykomp/uploady/$klient/*.tar.gz 2>/dev/null | tail -n1`
+    [ -z "$najnovsi" ] && echo "klient $klient nic neuploadol!" && exit 1
+    id=`basename "$najnovsi" .tar.gz`
+    dir=hlavnykomp/buildy/$klient/$id
+
+    [ "$force" ] && rm -rf "$dir"
+    [ -f "$dir/.status.ok" ] && continue
+    [ -f "$dir/.status.err" ] && continue
+
+    mkdir -p "$dir"
+    tar xf "$najnovsi" -C "$dir"
+    cd "$dir"
+    pwd
+    runmake SERVERDIR=../../../../server naserveri 2>&1 | tee -i .status
+    if [ "${PIPESTATUS[0]}" == "0" ]; then
+      echo "OK"
+      mv .status .status.ok
+    else
+      echo "nevyslo"
+      mv .status .status.err
+    fi
+    echo
+    cd "$root"
+  done
+
+  force=
+  sleep 1
+done

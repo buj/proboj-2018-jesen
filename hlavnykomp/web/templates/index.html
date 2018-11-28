@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+
+{% macro login_form() %}
+  <h2>Prihlásenie</h2>
+  <form action="{{ url_for('login') }}" method="POST">
+  <p>Družinka: <select name="druzinka">
+    <option value="" selected>--</option>
+    {% for id, title, hash in druzinky %}
+      <option value="{{ id }}">{{ title }}</option>
+    {% endfor %}
+  </select></p>
+  <p>Heslo: <input type="password" name="heslo"></p>
+  <p><input type="submit" value="Prihlásiť"></p>
+  </form>
+{% endmacro %}
+
+{% macro upload_form() %}
+  <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data">
+  <div>Upload nového klienta: <input type="file" name="archiv"> <input type="submit" value="Uploadnuť"></div>
+  <div style="font-size:0.8em;color:#777;display:block;">
+  (Chcem <code>tar.gz</code> obsahujúci zdrojáky a <code>Makefile</code>.
+  V adresári svojho klienta ho vyrobíte príkazom <code>make</code>.)</div>
+  </form>
+{% endmacro %}
+
+{% macro upload_list() %}
+  <h2>Moje uploady</h2>
+  <table><tbody>
+    {% for id, status in uploads[0:uploads_max] %}
+      <tr>
+        <td><a href="{{ url_for('uploads_download', id=id+'.tar.gz') }}"><code>{{ id }}</code></a></td>
+        <td>&larr;
+          {% if status == None %}
+            (pending)
+          {% else %}
+            <a href="{{ url_for('uploads_status', id=id) }}">{% if status %}OK{% else %}<strong>Chyba</strong>{% endif %}</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="2">(zatiaľ žiadne uploady)</td>
+      </tr>
+    {% endfor %}
+  </tbody></table>
+  {% if uploads|length > uploads_max %}
+    <p><a href="{{ url_for('uploads') }}">Zobraz všetky uploady</a></p>
+  {% endif %}
+{% endmacro %}
+
+{% block body %}
+
+  <p><a href="{{ url_for('docs') }}">Dokumentácia</a></p>
+  <p><a href="{{ url_for('records') }}">Archív odohratých hier</a></p>
+  {% if config['GIT'] %}
+    <p><code>git clone {{ config['GIT'] }}</code> &larr; stiahne proboj</p>
+    <p><code>git pull</code> &larr; aktualizuje na najnovšiu verziu (spúšťať v adresári "proboj")</p>
+  {% endif %}
+
+  {% if username %}
+    <h2>Prihlásená družinka: {{ usertitles[username] }}</h2>
+    <form action="{{ url_for('logout') }}" method="POST"><p><input type="submit" value="Odhlásiť"></p></form>
+    {{ upload_form() }}
+    {{ upload_list() }}
+  {% else %}
+    {{ login_form() }}
+  {% endif %}
+
+  {{ ranklist }}
+
+{% endblock %}

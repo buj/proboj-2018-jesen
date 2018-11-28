@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+  <h2>Záznamy hier</h2>
+  <table>
+    <thead>
+      <tr><th>Čas</th><th>ID</th><th>Mapa</th><th>Výsledky</th></tr>
+    </thead>
+    <tbody>
+      {% for entry in records %}
+        <tr>
+          <td>{{ entry.begin }}</td>
+          <td>{% if entry.link %}<a href="{{ entry.link }}">{% endif %}<strong><code>{{ entry.id }}</code></strong>{% if entry.link %}</a>{% endif %}</td>
+          <td><code>{{ entry.map }}</code></td>
+          <td>{{ entry.state or entry.rank|join(' | ') }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p><a href="{{ url_for('index') }}">Naspäť</a></p>
+
+{% endblock %}

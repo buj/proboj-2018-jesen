@@ -22,14 +22,39 @@ public class Server implements Runnable {
   protected GameServer gserver;
   
   /** Creates a test game. */
-  public Server () throws IOException {
-    receptionist = new Receptionist(new InetSocketAddress("127.0.0.1", 4247));
+  public Server (Map<String, String> argMap) throws IOException {
+    // set seed if in args
+    int seed = 1023456789;
+    if (argMap.containsKey("seed")) {
+      seed = Integer.parseInt(argMap.get("seed"));
+    }
+    rng = new Random(seed);
+    
+    // default arguments
+    Terrain terra = Terrain.mildRandom(rng, 100, 100);
+    List<InitialUnit> initial = InitialUnit.dummyStartingPositions(terra);
+    
+    // first argument is map and initial units file
+    if (argMap.containsKey("map")) {
+      FileInputStream fin = new FileInputStream(argMap.get("map"));
+      Scanner sc = new Scanner(fin);
+      terra = new Terrain(sc);
+      initial = InitialUnit.getStartingPositions(sc);
+    }
+    
+    // optional second argument: IP address and port
+    String addr = "127.0.0.1";
+    int port = 4247;
+    if (argMap.containsKey("addr")) {
+      addr = argMap.get("addr");
+    }
+    if (argMap.containsKey("port")) {
+      port = Integer.parseInt(argMap.get("seed"));
+    }
+    receptionist = new Receptionist(new InetSocketAddress(addr, port));
     lobby = new Lobby();
     
     // creates the game
-    rng = new Random(1023456789);
-    Terrain terra = Terrain.mildRandom(rng, 100, 100);
-    List<InitialUnit> initial = InitialUnit.dummyStartingPositions(terra);
     Game game = new Game(rng, terra, initial);
     gserver = new GameServer(game);
     
@@ -89,10 +114,19 @@ public class Server implements Runnable {
     // run the server
     Server server;
     try {
-      server = new Server();
+      Map<String, String> argMap = new HashMap<>();
+      for (String arg : args) {
+        String[] splitted = arg.split("=");
+        argMap.put(splitted[0], splitted[1]);
+      }
+      server = new Server(argMap);
     }
     catch (IOException exc) {
       logger.info(String.format("error while creating server, receptionist IOException, aborting. [%s]", exc.getMessage()));
+      return;
+    }
+    catch (IndexOutOfBoundsException exc) {
+      logger.info(String.format("error while parsing arguments: expected something of form x=y [%s]", exc.getMessage()));
       return;
     }
     server.run();

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<title>{% block title %}Proboj{% endblock %}</title>
+<style type="text/css">
+  html { height: 100%; background: #CCC; margin: 0; padding: 0; }
+  body {
+    font: 10pt Arial, sans-serif; background: white; color: black;
+    margin: 0 auto; padding: 0 1em;
+    max-width: 70em; min-height: 100%; overflow-y: scroll;
+  }
+  #container { margin: -1px; padding: 1px; }
+  .error { color: #800; font-weight: bold; border: solid red 1px; background: #FFCCCC; padding: .3em; }
+  .success { color: green; font-weight: bold; border: solid green 1px; background: #CCFFCC; padding: .3em; }
+</style>
+<div id="container">
+  <h1>{{ self.title() }}</h1>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block body %}{% endblock %}
+</div>

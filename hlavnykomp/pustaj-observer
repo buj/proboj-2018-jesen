@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+cd "`dirname "$0"`"/..
+
+while true; do
+  neukazane=`grep -l '^state=displaying$' zaznamy/*.manifest 2>/dev/null | head -n1`
+  if [ -z "$neukazane" ]; then
+    sleep 0.5
+    continue
+  fi
+  dir=${neukazane%.manifest}
+  echo "`date +'%Y-%m-%d %H:%M:%S'`: ukazujem $dir"
+  if ./observer/observer $dir; then
+    sed -i 's/^state=displaying$/state=displayed/' $neukazane
+    tar czf ${dir}.tar.gz -C zaznamy ${dir#zaznamy/}
+    rm -r $dir
+  else
+    echo "nenulovy status $?, koncim"
+    break
+  fi
+done
+

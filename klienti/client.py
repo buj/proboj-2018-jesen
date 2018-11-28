@@ -61,7 +61,10 @@ try:
     print("finish", file = fout, flush = True)
     
     # Execute client and have him play.
-    sub = subprocess.Popen(args.exec_path, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = ferr, universal_newlines = True)
+    command = args.exec_path
+    if command[-3:] == ".py":
+      command = "python3 {}".format(command)
+    sub = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = ferr, universal_newlines = True)
     from_server = threading.Thread(target = redirect, args = (fin, sub.stdin), daemon = True)
     from_client = threading.Thread(target = redirect, args = (sub.stdout, fout), daemon = True)
     from_server.start()

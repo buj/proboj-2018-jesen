@@ -1,0 +1,65 @@
+#!/bin/bash
+
+set -e
+cd "`dirname "$0"`"/..
+
+while true; do
+  echo
+
+  cakam=
+  while [ "`grep '^state=displaying$' zaznamy/*.manifest 2>/dev/null | wc -l`" -gt 1 ]; do
+    [ "$cakam" ] || echo -n "cakam kym observer skonci... "
+    cakam=t
+    sleep 0.5
+  done
+  [ "$cakam" ] && echo "docakal som"
+
+  source ./hlavnykomp/srvconfig
+
+  mapa=$((RANDOM % ${#mapy[@]}))
+  mapa=${mapy[$mapa]}
+
+  echo "spustam hru na mape $mapa"
+
+  buildy=()
+  for klient in "${klienti[@]}"; do
+    najnovsi=`ls hlavnykomp/buildy/$klient/*/.status.ok 2>/dev/null | tail -n1`
+    [ -z "$najnovsi" ] && echo "klient $klient nema ziaden ok build!" && exit 1
+    buildy+=("${najnovsi%/*}")
+  done
+  buildystr="${buildy[*]}"
+  buildystr="${buildystr//"hlavnykomp/buildy/"}"
+  echo "klienti: $buildystr"
+
+  # $((...)) konvertuje 010 na 8, expr nie
+  # ta 0 navyse je pre pripad ze zaznamy/ su prazdne
+  dir=$(expr "0$(ls zaznamy/ | grep -Eo '^[0-9]{6}' | tail -n1)" + 1)
+  dir=zaznamy/`printf '%06d' "$dir"`
+  mkdir $dir
+  echo "adresar: $dir"
+
+  echo "clients=${buildystr// /,}
+server=`stat -c %Y server/server`
+map=$mapa
+begin=`date +%s`
+state=playing" > $dir.manifest
+  for (( i = 0; i < ${#klienti[@]}; i++ )); do
+    echo "${klienti[$i]}"
+    echo "${buildy[$i]##*/}"
+    echo "${nazvy[$i]}"
+  done > $dir/titles
+
+  if ./server/server $dir $mapa ${buildy[@]} &>$dir/stderr.srv; then
+    rank=`tail -n+2 $dir/rank`
+    echo "hotovo"
+    echo "rank=${rank//$'\n'/,}" >> $dir.manifest
+    sed -i 's/^state=.*/state=displaying/' $dir.manifest
+  else
+    exitcode=$?
+    echo "server spadol s kodom $?"
+    echo "exitcode=$exitcode" >> $dir.manifest
+    sed -i 's/^state=.*/state=crashed/' $dir.manifest
+    sleep 10
+  fi
+done
+
