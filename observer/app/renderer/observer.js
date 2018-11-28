@@ -3,7 +3,13 @@ import electron from 'electron'
 import fs from 'fs'
 import {debounce, forEach} from 'lodash'
 
-const MAX_CELL_SIZE = 100
+const MAX_CELL_SIZE = 500
+
+const MODE = {
+  OBSERVER: -1,
+  PLAYER1: 0,
+  PLAYER2: 1,
+}
 
 const TILES = {
   PLAIN: 0,
@@ -18,17 +24,33 @@ const UNIT_TYPES = {
 
 const TILE_TEXTURES = {
   [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
-  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest.jpg'),
+  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest2.jpeg'),
   [TILES.WATER]: PIXI.Texture.fromImage('../assets/water2.jpg'),
 }
 
-const PLAYER_COLORS = [255, 16711680]
+const UNIT_TEXTURES = {
+  [UNIT_TYPES.WARRIOR]: [
+    PIXI.Texture.fromImage('../assets/blue_sword.png'),
+    PIXI.Texture.fromImage('../assets/red_sword.png'),
+  ],
+  [UNIT_TYPES.ARCHER]: [
+    PIXI.Texture.fromImage('../assets/blue_bow.png'),
+    PIXI.Texture.fromImage('../assets/red_bow.png'),
+  ],
+}
+
+const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
+
 const SPEED_STEP = 0.05
+const ZOOM_DELTA = 0.05
+const CAMERA_MOVE_DELTA = 50
 
 const state = {
-  // constants
-  width: 1000,
-  height: 700,
+  zoom: 1,
+  stageOffset: {
+    x: 0,
+    y: 0,
+  },
   // these are loaded from observer log file
   mapType: null,
   n: null,
@@ -53,6 +75,32 @@ const updateCellSize = () => {
     window.innerHeight / state.n,
     MAX_CELL_SIZE
   )
+}
+
+const updateRendererSize = () => {
+  const {pixiApp, cellSize, n, m, zoom, stageOffset} = state
+  pixiApp.renderer.resize(cellSize * n * zoom + stageOffset.x, cellSize * m * zoom + stageOffset.y)
+}
+
+const updateZoom = (delta) => {
+  state.zoom = Math.max(0, state.zoom + delta)
+  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
+  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
+  updateRendererSize()
+}
+
+const updateStageCenter = (xDelta, yDelta) => {
+  const {cellSize, n, m, zoom, stageOffset} = state
+  if (state.stageOffset.x + xDelta > 0 || state.stageOffset.y + yDelta > 0) return
+  const hiddenWidth = cellSize * m * zoom - window.innerWidth
+  const hiddenHeight = cellSize * n * zoom - window.innerHeight
+  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) return
+  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) return
+  state.stageOffset.x += xDelta
+  state.stageOffset.y += yDelta
+  state.pixiApp.stage.x += xDelta
+  state.pixiApp.stage.y += yDelta
+  updateRendererSize()
 }
 
 const readObserverLog = () => {
@@ -133,6 +181,8 @@ const readObserverLog = () => {
         }
         state.states.push(st)
       }
+
+      // other initialization
       updateCellSize()
       res()
     })
@@ -144,9 +194,11 @@ const renderMapTiles = () => {
   const terrainContainer = new PIXI.Container()
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      const tile = new PIXI.extras.TilingSprite(TILE_TEXTURES[terrain[i][j]], cellSize, cellSize)
+      const texture = TILE_TEXTURES[terrain[i][j]]
+      const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
+      tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
       const mask = new PIXI.Graphics()
-      mask.beginFill(0, heights[i][j] / 10)
+      mask.beginFill(0, heights[i][j] / 5)
       mask.drawRect(0, 0, cellSize, cellSize)
       tile.x = mask.x = cellSize * i
       tile.y = mask.y = cellSize * j
@@ -154,7 +206,6 @@ const renderMapTiles = () => {
       terrainContainer.addChild(mask)
     }
   }
-  pixiApp.renderer.resize(cellSize * n, cellSize * m)
   terrainContainer.cacheAsBitmap = true
   pixiApp.stage.addChild(terrainContainer)
 }
@@ -184,6 +235,33 @@ const setEventListeners = () => {
           state.savedSpeed = undefined
         }
         break
+      case '0':
+        state.mapType = MODE.OBSERVER
+        break
+      case '1':
+        state.mapType = MODE.PLAYER1
+        break
+      case '2':
+        state.mapType = MODE.PLAYER2
+        break
+      case '4':
+        updateZoom(ZOOM_DELTA)
+        break
+      case '5':
+        updateZoom(-ZOOM_DELTA)
+        break
+      case 'ArrowLeft':
+        updateStageCenter(CAMERA_MOVE_DELTA, 0)
+        break
+      case 'ArrowRight':
+        updateStageCenter(-CAMERA_MOVE_DELTA, 0)
+        break
+      case 'ArrowUp':
+        updateStageCenter(0, CAMERA_MOVE_DELTA)
+        break
+      case 'ArrowDown':
+        updateStageCenter(0, -CAMERA_MOVE_DELTA)
+        break
       default:
         break
     }
@@ -192,10 +270,51 @@ const setEventListeners = () => {
 }
 
 const createPixiApp = () => {
-  state.pixiApp = new PIXI.Application(state.width, state.height, {
+  // TODO: use maximum allowed size
+  state.pixiApp = new PIXI.Application(1000, 600, {
     powerPreference: 'high-performance',
   })
   state.pixiApp.stage.interactiveChildren = true
+}
+
+const renderFogOfWar = () => {
+  const {currentRound, states, cellSize, pixiApp, mapType, n, m, visibility} = state
+  if (state.fogContainer) {
+    state.fogContainer.destroy()
+    delete state.fogContainer
+  }
+  if (mapType === MODE.OBSERVER) return
+  state.fogContainer = new PIXI.Container()
+
+  const isFog = []
+  for (let i = 0; i < n; i++) {
+    const row = []
+    for (let j = 0; j < m; j++) {
+      row.push(true)
+    }
+    isFog.push(row)
+  }
+
+  states[currentRound].units.forEach((unit) => {
+    if (unit.owner === state.mapType) {
+      visibility[unit.x][unit.y].forEach((cell) => {
+        isFog[cell[0]][cell[1]] = false
+      })
+    }
+  })
+
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) {
+      if (!isFog[i][j]) continue
+      const tile = new PIXI.extras.TilingSprite(FOG_TEXTURE, cellSize, cellSize)
+      tile.tileScale = new PIXI.Point(cellSize / FOG_TEXTURE.width, cellSize / FOG_TEXTURE.height)
+      tile.x = cellSize * i
+      tile.y = cellSize * j
+      state.fogContainer.addChild(tile)
+    }
+  }
+
+  pixiApp.stage.addChild(state.fogContainer)
 }
 
 const tick = (tickDelta) => {
@@ -224,15 +343,14 @@ const tick = (tickDelta) => {
   })
 
   forEach(diff, ({x, y, delta, rawX, rawY, type}, id) => {
-    if (!delta) {
+    if (!delta && state.nextStateFraction >= 1) {
       state.unitsContainer.removeChild(unitGraphics[id])
       unitGraphics[id].destroy()
       delete unitGraphics[id]
     } else {
       //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
-      const centering = type === UNIT_TYPES.ARCHER ? cellSize / 6 : 0
-      unitGraphics[id].x = rawX - state.nextStateFraction * x + centering
-      unitGraphics[id].y = rawY - state.nextStateFraction * y + centering
+      unitGraphics[id].x = rawX - state.nextStateFraction * x
+      unitGraphics[id].y = rawY - state.nextStateFraction * y
     }
   })
   if (state.nextStateFraction >= 1) {
@@ -241,6 +359,7 @@ const tick = (tickDelta) => {
     // must be accessed through state
     state.currentRound += 1
   }
+  renderFogOfWar()
 }
 
 const renderUnits = () => {
@@ -249,20 +368,13 @@ const renderUnits = () => {
   state.unitGraphics = {}
 
   states[currentRound].units.forEach((unit) => {
-    const g = new PIXI.Graphics()
-    g.beginFill(PLAYER_COLORS[unit.owner])
-    if (unit.type === UNIT_TYPES.WARRIOR) {
-      g.drawCircle(cellSize / 2, cellSize / 2, cellSize / 3)
-      g.x = cellSize * unit.x
-      g.y = cellSize * unit.y
-    } else {
-      g.drawRect(0, 0, (cellSize * 2) / 3, (cellSize * 2) / 3)
-      const free = cellSize / 3
-      g.x = cellSize * unit.x + free / 2
-      g.y = cellSize * unit.y + free / 2
-    }
-    state.unitGraphics[unit.id] = g
-    state.unitsContainer.addChild(g)
+    const texture = UNIT_TEXTURES[unit.type][unit.owner]
+    const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
+    tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
+    tile.x = cellSize * unit.x
+    tile.y = cellSize * unit.y
+    state.unitGraphics[unit.id] = tile
+    state.unitsContainer.addChild(tile)
   })
   pixiApp.stage.addChild(state.unitsContainer)
 }
@@ -270,8 +382,10 @@ const renderUnits = () => {
 const rerenderUI = () => {
   state.pixiApp.stage.removeChildren()
   updateCellSize()
+  updateZoom(0)
   renderMapTiles()
   renderUnits()
+  renderFogOfWar()
 }
 
 const createObserver = async (rootElement) => {
