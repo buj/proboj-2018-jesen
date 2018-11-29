@@ -2,7 +2,7 @@
 
 import random
 import sys
-from common import Pozicia, Prikaz, Teren, Stav
+from common import Pozicia, Prikaz, Teren, Stav, read_empty_line
 from logger import logger
 # Utility
 
@@ -26,16 +26,20 @@ def intro():
     ja = int(f_in.readline().strip())
     logger("get teren")
     teren = Teren.fromFile(f_in)
+    read_empty_line(f_in)
     stav = Stav.fromFile(f_in)
 
 
 def dalsi_stav():
     global stav
+    logger('dalsi stav')
     write_to_server("get %d" % stav.kolo)
+    read_empty_line(f_in)
     stav = Stav.fromFile(f_in)
 
 
 def odosli_prikazy(prikazy):
+    logger('odosli prikazy')
     prikazy = [p.serialize() for p in prikazy]
     write_to_server("commands %s" % (
         " ".join([str(len(prikazy))] + prikazy)

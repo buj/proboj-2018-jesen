@@ -1,9 +1,14 @@
 from logger import logger
 
 
+def read_empty_line(f):
+    line = f.readline().strip()
+    assert(not line)
+
+
 def read_ints(f):
     line = f.readline().strip()
-    logger('readline', line)
+    assert line
     return list(map(int, line.split()))
 
 
@@ -84,12 +89,18 @@ class Teren:
     @classmethod
     def fromFile(cls, f):
         n, m = read_ints(f)
+        read_empty_line(f)
+
         typ = []
         for i in range(n):
             typ.append(read_ints(f))
+
+        read_empty_line(f)
         vysky = []
         for i in range(n):
             vysky.append(read_ints(f))
+
+        read_empty_line(f)
         vidim = []
         for i in range(n):
             row = []
