@@ -92,12 +92,11 @@ const updateRendererSize = () => {
 }
 
 const updateStageCenter = (xDelta, yDelta) => {
-  const {cellSize, n, m, zoom, stageOffset} = state
+  const {stageOffset} = state
   if (state.stageOffset.x + xDelta > 0) xDelta = -stageOffset.x
   if (state.stageOffset.y + yDelta > 0) yDelta = -stageOffset.y
   const hiddenWidth = getHiddenWidth()
   const hiddenHeight = getHiddenHeight()
-  console.log(hiddenHeight, -(stageOffset.y + yDelta), hiddenWidth, -(stageOffset.x + xDelta))
   if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) xDelta = -(hiddenWidth + stageOffset.x)
   if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) {
     yDelta = -(hiddenHeight + stageOffset.y)
@@ -114,14 +113,12 @@ const updateZoom = (delta) => {
   state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
   const hiddenWidth = getHiddenWidth()
   const hiddenHeight = getHiddenHeight()
-  console.log(
-    hiddenWidth,
-    window.innerWidth - state.cellSize * state.n,
-    hiddenHeight,
-    window.innerHeight - state.cellSize * state.m,
-    state.stageOffset
-  )
-  if (delta < 0) updateStageCenter(Math.max(-hiddenWidth, state.stageOffset.x), Math.max(-hiddenHeight, state.stageOffset.y))
+  if (delta < 0) {
+    updateStageCenter(
+      Math.max(-hiddenWidth, state.stageOffset.x),
+      Math.max(-hiddenHeight, state.stageOffset.y)
+    )
+  }
   updateRendererSize()
   document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
 }
@@ -337,7 +334,7 @@ const renderFogOfWar = () => {
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      if (j === m-1 || !isFog[i][j]) continue
+      if (j === m - 1 || !isFog[i][j]) continue
       const tile = new PIXI.extras.TilingSprite(FOG_TEXTURE, cellSize, cellSize)
       tile.tileScale = new PIXI.Point(cellSize / FOG_TEXTURE.width, cellSize / FOG_TEXTURE.height)
       tile.x = cellSize * i
