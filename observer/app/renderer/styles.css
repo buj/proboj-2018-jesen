@@ -53,3 +53,15 @@ body {
   color: red;
   font-size: 3em;
 }
+
+.red {
+  color: red;
+}
+
+.blue {
+  color: blue;
+}
+
+.hidden {
+  display: none;
+}

@@ -120,20 +120,21 @@ const updateZoom = (delta) => {
     )
   }
   updateRendererSize()
-  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
 }
 
 const readObserverLog = () => {
   return new Promise((res, rej) => {
     const args = electron.remote.process.argv
+    const params = args[1] === '.' ? args.slice(2) : args.slice(1)
     // NOTE: in development the observer file is specified as third argument
-    if (args.length < 2) {
-      const a = JSON.stringify(args)
-      rej(`${a}Observer log file not specified!`)
+    if (params.length < 1) {
+      rej('Observer log file not specified!')
       return
     }
 
-    fs.readFile(args[1] === '.' ? args[2] : args[1], 'utf-8', (err, data) => {
+    console.log(params)
+
+    fs.readFile(params[0], 'utf-8', (err, data) => {
       if (err) {
         rej(`Error while reading observer log file: "${err.message}"`)
         return
@@ -210,6 +211,18 @@ const readObserverLog = () => {
       updateCellSize()
       res()
     })
+
+    // NOTE: deteched promise wink ;)
+    if (params.length > 1) {
+      fs.readFile(params[1], 'utf-8', (err, data) => {
+        if (err) return
+        const lines = data.split(/\n+/g)
+        document.getElementById('p1').innerHTML = lines[2]
+        document.getElementById('parentp1').classList.toggle('hidden')
+        document.getElementById('p2').innerHTML = lines[5]
+        document.getElementById('parentp2').classList.toggle('hidden')
+      })
+    }
   })
 }
 
@@ -296,7 +309,6 @@ const setEventListeners = () => {
       default:
         break
     }
-    document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
   })
 }
 
@@ -435,7 +447,6 @@ const createObserver = async (rootElement) => {
   try {
     await readObserverLog()
     setEventListeners()
-    document.getElementById('speed').innerHTML = Math.round(state.speed * 100) / 100
     createPixiApp()
     await rerenderUI()
 

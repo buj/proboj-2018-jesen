@@ -39,16 +39,20 @@ bsync.init(
     }
 
     // NOTE: hardcoded observer file
-    const child = spawn(electron, ['.', path.join(__dirname, '../observer.log')], {
-      env: {
-        ...{
-          NODE_ENV: 'development',
-          BROWSER_SYNC_CLIENT_URL: getClientUrl(bs.options),
+    const child = spawn(
+      electron,
+      ['.', path.join(__dirname, '../observer.log'), path.join(__dirname, '../names.log')],
+      {
+        env: {
+          ...{
+            NODE_ENV: 'development',
+            BROWSER_SYNC_CLIENT_URL: getClientUrl(bs.options),
+          },
+          ...process.env,
         },
-        ...process.env,
-      },
-      stdio: 'inherit',
-    })
+        stdio: 'inherit',
+      }
+    )
 
     child.on('close', () => {
       process.exit()
