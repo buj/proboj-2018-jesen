@@ -1,0 +1,9 @@
+Ako spustiť celú mašinériu:
+1. Zaregistruj tímy.
+2. V rôznych terminálových taboch spusti:
+  a) hlavnykomp/pustaj-plamen (kompiluje ich submity)
+  b) hlavnykomp/pustaj-observer (ukazuje odohrate hry na projektore)
+  c) python3 hlavnykomp/matchmaking.py (odohra hry)
+  d) rungitdaemon.sh (spravi repozitar v /home/buj/srv/git/proboj-2018-jesen pristupny cez lokalnu siet)
+3. Vždy, keď sa udeje zmena, skopíruj podstatné časti do /home/buj/srv/git/proboj-2018-jesen.
+  Napríklad použitím skriptu 'update.sh'.
