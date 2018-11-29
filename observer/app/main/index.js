@@ -52,6 +52,7 @@ app.on('ready', async () => {
 
   // show window once on first load
   mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.maximize()
     mainWindow.show()
   })
 

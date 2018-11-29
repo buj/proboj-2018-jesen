@@ -88,7 +88,7 @@ const updateCellSize = () => {
 }
 
 const updateRendererSize = () => {
-  state.pixiApp.renderer.resize(window.innerWidth, window.innerHeight)
+  state.pixiApp.renderer.resize(state.n * state.cellSize, state.m * state.cellSize)
 }
 
 const updateStageCenter = (xDelta, yDelta) => {
@@ -360,6 +360,9 @@ const tick = (tickDelta) => {
   document.getElementById('score').innerHTML = states[currentRound].score
   if (states[currentRound].isFinalRound) {
     document.getElementById('modal').classList.add('visible')
+    setTimeout(() => {
+      electron.remote.getCurrentWindow().close()
+    }, 1500)
     return
   }
   const diff = {}
