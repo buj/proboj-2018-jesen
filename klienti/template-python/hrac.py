@@ -16,9 +16,11 @@ ja = None
 stav = None
 teren = None
 
+
 def write_to_server(*args):
     print(*args, file=f_out)
     f_out.flush()
+
 
 def intro():
     write_to_server("intro")
@@ -41,6 +43,7 @@ def dalsi_stav():
 def odosli_prikazy(prikazy):
     logger('odosli prikazy')
     prikazy = [p.serialize() for p in prikazy]
+    logger(prikazy)
     write_to_server("commands %s" % (
         " ".join([str(len(prikazy))] + prikazy)
     ))
