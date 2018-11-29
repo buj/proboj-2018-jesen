@@ -111,7 +111,7 @@ class Teren:
                 tmp = tmp[1:]  # skip len
 
                 row.append([
-                    tmp[k*2:k*2+2] for k in range(c)
+                    Pozicia(tmp[k*2], tmp[k*2 + 1]) for k in range(c)
                 ])
             vidim.append(row)
         return cls(typ, vysky, vidim)
