@@ -19,6 +19,7 @@ public class Game {
   
   protected Map<Position, Unit> unitMap;
   protected int score; // number of attackers that have successfully passed through
+  protected int maxScore; // number of all attackers, initially
   protected int turn; // turn number
   protected Stepper stepper; // contains almost all of game logic
   protected boolean gameOver;
@@ -30,6 +31,7 @@ public class Game {
     visibility = new LinearVisibility(terrain, Constants.sight);
     unitMap = new HashMap<Position, Unit>();
     score = 0;
+    maxScore = 0;
     turn = 1;
     stepper = new Stepper();
     gameOver = false;
@@ -37,6 +39,9 @@ public class Game {
     // populate the unit list from <initial>
     for (InitialUnit data : initial) {
       Unit unit = new Unit(data.owner, data.type);
+      if (data.owner == Constants.attacker) {
+        maxScore += 1;
+      }
       unitMap.put(data.pos, unit);
     }
   }
@@ -468,6 +473,11 @@ public class Game {
   /** Returns the score accumulated by the attacker so far. */
   public int getScore () {
     return score;
+  }
+  
+  /** Returns the maximum possible score for the attacker. */
+  public int getMaxScore () {
+    return maxScore;
   }
   
   /** Returns the current turn number. */

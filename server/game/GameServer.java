@@ -194,6 +194,13 @@ public class GameServer implements Runnable {
     return bui.toString();
   }
   
+  /** Returns the score of the defender and then of the attacker. */
+  public String getScore () {
+    int atkScore = game.getScore();
+    int defScore = game.getMaxScore() - atkScore;
+    return String.format("%d\n%d\n", defScore, atkScore);
+  }
+  
   /** Starts a conversation with the provided client. */
   public void communicateWith (Client client) throws IOException {
     while (true) {

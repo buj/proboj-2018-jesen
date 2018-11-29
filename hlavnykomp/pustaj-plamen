@@ -30,7 +30,8 @@ while true; do
     tar xf "$najnovsi" -C "$dir"
     cd "$dir"
     pwd
-    runmake SERVERDIR=../../../../server naserveri 2>&1 | tee -i .status
+    runmake hrac 2>&1 | tee -i .status
+    # runmake SERVERDIR=../../../../server naserveri 2>&1 | tee -i .status
     if [ "${PIPESTATUS[0]}" == "0" ]; then
       echo "OK"
       mv .status .status.ok

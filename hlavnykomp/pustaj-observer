@@ -11,7 +11,7 @@ while true; do
   fi
   dir=${neukazane%.manifest}
   echo "`date +'%Y-%m-%d %H:%M:%S'`: ukazujem $dir"
-  if ./observer/observer $dir; then
+  if ./observer/observer.AppImage $dir/observer.log; then
     sed -i 's/^state=displaying$/state=displayed/' $neukazane
     tar czf ${dir}.tar.gz -C zaznamy ${dir#zaznamy/}
     rm -r $dir

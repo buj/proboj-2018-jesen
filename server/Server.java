@@ -20,6 +20,7 @@ public class Server implements Runnable {
   protected Lobby lobby;
   protected Listener listener;
   protected GameServer gserver;
+  protected String recordFolder;
   
   /** Creates a test game. */
   public Server (Map<String, String> argMap) throws IOException {
@@ -54,6 +55,12 @@ public class Server implements Runnable {
     receptionist = new Receptionist(new InetSocketAddress(addr, port));
     lobby = new Lobby();
     
+    // set log folder
+    recordFolder = ".";
+    if (argMap.containsKey("log")) {
+      recordFolder = argMap.get("log");
+    }
+    
     // creates the game
     Game game = new Game(rng, terra, initial);
     gserver = new GameServer(game);
@@ -64,6 +71,16 @@ public class Server implements Runnable {
   
   @Override
   public void run () {
+    // redirect stderr to server.log
+    PrintStream ferr;
+    try {
+      ferr = new PrintStream(String.format("%s/server.log", recordFolder));
+      System.setErr(ferr);
+    }
+    catch (FileNotFoundException exc) {
+      logger.info(String.format("Could not redirect output to file %s/server.log", recordFolder));
+    }
+    
     // starts the thing that listens for clients
     Thread lobby_worker = new Thread(listener);
     lobby_worker.setDaemon(true);
@@ -91,18 +108,25 @@ public class Server implements Runnable {
     catch (InterruptedException exc) {
       logger.info(String.format("interrupt while waiting for game server to die. Gonna die non-gracefully [%s]", exc.getMessage()));
     }
-    // create observation files
-    String[] names = new String[]{"observer", "defender", "attacker"};
-    for (int id = -1; id <= 1; id++) {
-      try {
-        String filename = String.format("%s.log", names[1 + id]);
-        PrintStream fout = new PrintStream(new FileOutputStream(filename));
-        fout.print(gserver.getHistory(id));
-        fout.close();
-      }
-      catch (FileNotFoundException exc) {
-        logger.info(String.format("cannot create observation file number %d [%s]", id, exc.getMessage()));
-      }
+    // create observation file
+    String observer_file = String.format("%s/observer.log", recordFolder);
+    try {
+      PrintStream fout = new PrintStream(new FileOutputStream(observer_file));
+      fout.print(gserver.getHistory(-1));
+      fout.close();
+    }
+    catch (FileNotFoundException exc) {
+      logger.info(String.format("cannot create observation file [%s]", exc.getMessage()));
+    }
+    // create rank file
+    String rank_file = String.format("%s/rank", recordFolder);
+    try {
+      PrintStream fout = new PrintStream(new FileOutputStream(rank_file));
+      fout.print(gserver.getScore());
+      fout.close();
+    }
+    catch (FileNotFoundException exc) {
+      logger.info(String.format("cannot create score file [%s]", exc.getMessage()));
     }
   }
   

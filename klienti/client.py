@@ -1,5 +1,5 @@
 import argparse
-import subprocess, socket, sys, threading
+import subprocess, socket, sys, threading, time
 import traceback, signal
 
 
@@ -24,8 +24,11 @@ def truncate(filename):
 
 def redirect(src, dest):
   """Redirects output from readable stream <src> to writable stream <dest>."""
-  for line in src:
-    print(line, end = '', file = dest, flush = True)
+  try:
+    for line in src:
+      print(line, end = '', file = dest, flush = True)
+  except BrokenPipeError:
+    print("Client wrapper: Broken pipe to server, probably end of game", file = ferr)
 
 
 parser = argparse.ArgumentParser()
@@ -45,37 +48,52 @@ if args.log is not None:
 for sig in [signal.SIGQUIT, signal.SIGTERM, signal.SIGINT]:
   signal.signal(sig, clean)
 
-try:
-  while True:
-    # Connect to server.
-    sock = socket.create_connection((args.host, args.port))
-    fin = sock.makefile('r')
-    fout = sock.makefile('w')
-    
-    # Take seat num. <player_id>
+for attempt in range(3):
+  try:
     while True:
-      print("take", args.player_id, file = fout, flush = True)
-      ans = fin.readline().strip()
-      if ans == "ok":
-        break
-    print("finish", file = fout, flush = True)
-    
-    # Execute client and have him play.
-    command = args.exec_path
-    if command[-3:] == ".py":
-      command = "python3 {}".format(command)
-    sub = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = ferr, universal_newlines = True)
-    from_server = threading.Thread(target = redirect, args = (fin, sub.stdin), daemon = True)
-    from_client = threading.Thread(target = redirect, args = (sub.stdout, fout), daemon = True)
-    from_server.start()
-    from_client.start()
-    from_server.join()
-    
-    # Release held resources.
-    sub.kill()
-    fin.close()
-    fout.close()
-    sock.close()
+      # Connect to server.
+      sock = socket.create_connection((args.host, args.port))
+      fin = sock.makefile('r')
+      fout = sock.makefile('w')
+      
+      # Take seat num. <player_id>
+      while True:
+        print("take", args.player_id, file = fout, flush = True)
+        ans = fin.readline().strip()
+        if ans == "ok":
+          break
+      print("finish", file = fout, flush = True)
+      
+      # Execute client and have him play.
+      command = args.exec_path
+      if command[-3:] == ".py":
+        command = "python3 {}".format(command)
+      sub = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = ferr, universal_newlines = True)
+      from_server = threading.Thread(target = redirect, args = (fin, sub.stdin), daemon = True)
+      from_client = threading.Thread(target = redirect, args = (sub.stdout, fout), daemon = True)
+      from_server.start()
+      from_client.start()
+      from_server.join()
+      
+      # Release held resources.
+      sub.kill()
+      fin.close()
+      fout.close()
+      sock.close()
 
-except Exception:
-  traceback.print_exc()
+  except ConnectionRefusedError:
+    print("Client wrapper: Connection refused, gonna try again in few seconds.", file = ferr)
+  
+  except PermissionError:
+    print("Client wrapper: Cannot run the underlying program for some reason (does it exist? check path '{}')".format(args.exec_path), file = ferr)
+    break
+  
+  except ConnectionResetError:
+    print("Client wrapper: Connection reset, server probably finished", file = ferr)
+    break
+  
+  except BrokenPipeError:
+    print("Client wrapper: Broken pipe to server, probably end of game", file = ferr)
+    break
+  
+  time.sleep(1.)

@@ -52,7 +52,7 @@ def quit():
     path = '../uploady/{}'.format(t.id)
     if not os.path.isdir(path):
       os.mkdir(path)
-      default_client = '2018-07-14-00-00-00.tar.gz'
+      default_client = '2018-11-29-00-00-00.tar.gz'
       shutil.copyfile(os.path.join('default', default_client), os.path.join(path, default_client))
   exit(0)
 
@@ -62,14 +62,14 @@ def to_alpha(n):
   res = ''
   while n > 0:
     res += chr(n%26 + ord('a'))
-    n /= 26
+    n //= 26
   return res[::-1]
 
 def add():
   id = 'team' + to_alpha(len(teams))
-  name = raw_input('Team name: ')
+  name = input('Team name: ')
   passwd = getpass.getpass()
-  hash = sha1('abc'+passwd+'def').hexdigest()
+  hash = sha1("abc{}def".format(passwd).encode("utf-8")).hexdigest()
   teams.append(Team(id, name, hash))
 
 commands = {'q': ('quit', quit), 'a': ('add team', add), 'l': ('list all teams', list_all)}
@@ -80,7 +80,7 @@ while True:
   for c, val in commands.items():
     print(c + ': ' + val[0])
   print('-----------------------')
-  command = raw_input()
+  command = input()
   if command not in commands:
     print('Unknown command: ' + command)
     continue
