@@ -16,24 +16,28 @@ ja = None
 stav = None
 teren = None
 
+def write_to_server(*args):
+    print(*args, file=f_out)
+    f_out.flush()
 
 def intro():
-    print("intro")
+    write_to_server("intro")
     global ja, teren, stav
     ja = int(f_in.readline().strip())
+    logger("get teren")
     teren = Teren.fromFile(f_in)
     stav = Stav.fromFile(f_in)
 
 
 def dalsi_stav():
     global stav
-    print("get %d" % stav.kolo)
+    write_to_server("get %d" % stav.kolo)
     stav = Stav.fromFile(f_in)
 
 
 def odosli_prikazy(prikazy):
     prikazy = [p.serialize() for p in prikazy]
-    print("commands %s" % (
+    write_to_server("commands %s" % (
         " ".join([str(len(prikazy))] + prikazy)
     ))
 
@@ -63,6 +67,7 @@ def odohraj_tah():
 
 
 def main():
+    logger("Init game")
     intro()
     while (not stav.koniecHry):
         logger("[Zacina kolo %d]" % stav.kolo)
@@ -72,4 +77,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logger("calling main")
     main()
