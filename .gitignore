@@ -1,3 +1,7 @@
+hlavnykomp/buildy/*
+hlavnykomp/uploady/*
+hlavnykomp/web/venv
+zaznamy
 *.class
 *.log
 *.zip
