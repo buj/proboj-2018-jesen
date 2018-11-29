@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js'
 import electron from 'electron'
 import fs from 'fs'
 import {debounce, forEach} from 'lodash'
+import {transposeState} from './transpose'
 
 const MAX_CELL_SIZE = 500
 
@@ -23,8 +24,8 @@ const UNIT_TYPES = {
 }
 
 const TILE_TEXTURES = {
-  [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/plain.jpeg'),
-  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest2.jpeg'),
+  [TILES.PLAIN]: PIXI.Texture.fromImage('../assets/snow2.jpeg'),
+  [TILES.FOREST]: PIXI.Texture.fromImage('../assets/forest3.jpg'),
   [TILES.WATER]: PIXI.Texture.fromImage('../assets/water2.jpg'),
 }
 
@@ -40,12 +41,13 @@ const UNIT_TEXTURES = {
 }
 
 const FOG_TEXTURE = PIXI.Texture.fromImage('../assets/fog.png')
+const WALL_TEXTURE = PIXI.Texture.fromImage('../assets/ice_wall.jpg')
 
 const SPEED_STEP = 0.05
 const ZOOM_DELTA = 0.05
 const CAMERA_MOVE_DELTA = 50
 
-const state = {
+let state = {
   zoom: 1,
   stageOffset: {
     x: 0,
@@ -69,38 +71,59 @@ const state = {
   unitsContainer: null,
 }
 
+const getHiddenHeight = () => {
+  return Math.max(0, state.cellSize * state.m * state.zoom - window.innerHeight)
+}
+
+const getHiddenWidth = () => {
+  return Math.max(0, state.cellSize * state.n * state.zoom - window.innerWidth)
+}
+
 const updateCellSize = () => {
   state.cellSize = Math.min(
-    window.innerWidth / state.m,
-    window.innerHeight / state.n,
+    window.innerWidth / state.n,
+    window.innerHeight / state.m,
     MAX_CELL_SIZE
   )
 }
 
 const updateRendererSize = () => {
-  const {pixiApp, cellSize, n, m, zoom, stageOffset} = state
-  pixiApp.renderer.resize(cellSize * n * zoom + stageOffset.x, cellSize * m * zoom + stageOffset.y)
-}
-
-const updateZoom = (delta) => {
-  state.zoom = Math.max(0, state.zoom + delta)
-  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
-  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
-  updateRendererSize()
+  state.pixiApp.renderer.resize(window.innerWidth, window.innerHeight)
 }
 
 const updateStageCenter = (xDelta, yDelta) => {
   const {cellSize, n, m, zoom, stageOffset} = state
-  if (state.stageOffset.x + xDelta > 0 || state.stageOffset.y + yDelta > 0) return
-  const hiddenWidth = cellSize * m * zoom - window.innerWidth
-  const hiddenHeight = cellSize * n * zoom - window.innerHeight
-  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) return
-  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) return
+  if (state.stageOffset.x + xDelta > 0) xDelta = -stageOffset.x
+  if (state.stageOffset.y + yDelta > 0) yDelta = -stageOffset.y
+  const hiddenWidth = getHiddenWidth()
+  const hiddenHeight = getHiddenHeight()
+  console.log(hiddenHeight, -(stageOffset.y + yDelta), hiddenWidth, -(stageOffset.x + xDelta))
+  if (xDelta < 0 && -(stageOffset.x + xDelta) > hiddenWidth) xDelta = -(hiddenWidth + stageOffset.x)
+  if (yDelta < 0 && -(stageOffset.y + yDelta) > hiddenHeight) {
+    yDelta = -(hiddenHeight + stageOffset.y)
+  }
   state.stageOffset.x += xDelta
   state.stageOffset.y += yDelta
   state.pixiApp.stage.x += xDelta
   state.pixiApp.stage.y += yDelta
   updateRendererSize()
+}
+
+const updateZoom = (delta) => {
+  state.zoom = Math.max(0, state.zoom + delta)
+  state.pixiApp.stage.scale = new PIXI.Point(state.zoom, state.zoom)
+  const hiddenWidth = getHiddenWidth()
+  const hiddenHeight = getHiddenHeight()
+  console.log(
+    hiddenWidth,
+    window.innerWidth - state.cellSize * state.n,
+    hiddenHeight,
+    window.innerHeight - state.cellSize * state.m,
+    state.stageOffset
+  )
+  if (delta < 0) updateStageCenter(Math.max(-hiddenWidth, state.stageOffset.x), Math.max(-hiddenHeight, state.stageOffset.y))
+  updateRendererSize()
+  document.getElementById('zoom').innerHTML = Math.round(state.zoom * 100) / 100
 }
 
 const readObserverLog = () => {
@@ -152,7 +175,9 @@ const readObserverLog = () => {
           const seeCount = tokens[pos++]
           const vis = []
           for (let k = 0; k < seeCount; k++) {
-            vis.push([tokens[pos++], tokens[pos++]])
+            const x = tokens[pos++]
+            // NOTE: so we don't have to tranpose later
+            vis.push([tokens[pos++], x])
           }
           row.push(vis)
         }
@@ -183,6 +208,8 @@ const readObserverLog = () => {
       }
 
       // other initialization
+      state.n += 1
+      state = transposeState(state)
       updateCellSize()
       res()
     })
@@ -194,16 +221,20 @@ const renderMapTiles = () => {
   const terrainContainer = new PIXI.Container()
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      const texture = TILE_TEXTURES[terrain[i][j]]
+      const texture = j === m - 1 ? WALL_TEXTURE : TILE_TEXTURES[terrain[i][j]]
       const tile = new PIXI.extras.TilingSprite(texture, cellSize, cellSize)
       tile.tileScale = new PIXI.Point(cellSize / texture.width, cellSize / texture.height)
-      const mask = new PIXI.Graphics()
-      mask.beginFill(0, heights[i][j] / 5)
-      mask.drawRect(0, 0, cellSize, cellSize)
-      tile.x = mask.x = cellSize * i
-      tile.y = mask.y = cellSize * j
+      tile.x = cellSize * i
+      tile.y = cellSize * j
       terrainContainer.addChild(tile)
-      terrainContainer.addChild(mask)
+      if (j !== m - 1) {
+        const mask = new PIXI.Graphics()
+        mask.x = cellSize * i
+        mask.y = cellSize * j
+        mask.beginFill(0, heights[i][j] / 5)
+        mask.drawRect(0, 0, cellSize, cellSize)
+        terrainContainer.addChild(mask)
+      }
     }
   }
   terrainContainer.cacheAsBitmap = true
@@ -273,6 +304,7 @@ const createPixiApp = () => {
   // TODO: use maximum allowed size
   state.pixiApp = new PIXI.Application(1000, 600, {
     powerPreference: 'high-performance',
+    backgroundColor: 4915330,
   })
   state.pixiApp.stage.interactiveChildren = true
 }
@@ -305,7 +337,7 @@ const renderFogOfWar = () => {
 
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < m; j++) {
-      if (!isFog[i][j]) continue
+      if (j === m-1 || !isFog[i][j]) continue
       const tile = new PIXI.extras.TilingSprite(FOG_TEXTURE, cellSize, cellSize)
       tile.tileScale = new PIXI.Point(cellSize / FOG_TEXTURE.width, cellSize / FOG_TEXTURE.height)
       tile.x = cellSize * i
@@ -348,7 +380,6 @@ const tick = (tickDelta) => {
       unitGraphics[id].destroy()
       delete unitGraphics[id]
     } else {
-      //console.log(id, unitGraphics[id].x, unitGraphics[id].y, {x, y})
       unitGraphics[id].x = rawX - state.nextStateFraction * x
       unitGraphics[id].y = rawY - state.nextStateFraction * y
     }
