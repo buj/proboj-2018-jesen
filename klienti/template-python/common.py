@@ -1,4 +1,4 @@
-from logger import logger
+from collections import namedtuple
 
 
 def read_empty_line(f):
@@ -29,6 +29,12 @@ class Pozicia:
 
     def serialize(self):
         return "%d %d" % (self.x, self.y)
+
+    def __str__(self):
+        return "(%d,%d)" % (self.x, self.y)
+
+    def __repr__(self):
+        return str(self)
 
 
 class Jednotka:
@@ -80,11 +86,28 @@ class Prikaz:
         )
 
 
+CellInfo = namedtuple('CellInfo', ['typ', 'vyska', 'vidim'])
+
+
 class Teren:
     def __init__(self, typ, vyska, vidim):
         self.typ = typ
         self.vyska = vyska
         self.vidim = vidim
+
+    @property
+    def r(self):
+        return len(self.vyska)
+
+    @property
+    def s(self):
+        return len(self.vyska[0])
+
+    def cellAt(self, x, y):
+        typ = self.typ[x][y]
+        vyska = self.vyska[x][y]
+        vidim = self.vidim[x][y]
+        return CellInfo(typ, vyska, vidim)
 
     @classmethod
     def fromFile(cls, f):
